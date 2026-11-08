@@ -1,1 +1,21 @@
 .superpowers/
+.impeccable/
+# Flutter/Dart
+.dart_tool/
+.packages
+.pub-cache/
+.pub/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+*.iml
+.idea/
+.vscode/
+# Android
+android/local.properties
+android/.gradle/
+android/app/.cxx/
+**/GeneratedPluginRegistrant.*
+# Misc
+*.log
+.DS_Store
