@@ -30,6 +30,9 @@ Future<void> Function(BuildContext context, Note note, String relPath)? editorEx
 /// Called after a note was closed and saved (sync uses this).
 void Function(String relPath)? onNoteClosed;
 
+/// Called when a note is opened (sync leaves it alone while it's open).
+void Function(String relPath)? onNoteOpened;
+
 class EditorScreen extends StatefulWidget {
   final String relPath;
   const EditorScreen({super.key, required this.relPath});
@@ -66,6 +69,7 @@ class _EditorScreenState extends State<EditorScreen> {
       _pdf = PdfPageCache(() => c.note.assets);
       c.thumbnailer = _thumbnail;
       c.addListener(_onNoteChanged);
+      onNoteOpened?.call(widget.relPath);
       await decodeImages(note, into: _images);
       if (!mounted) return;
       setState(() => _c = c);
