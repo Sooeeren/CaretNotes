@@ -7,7 +7,7 @@ import '../model/note.dart';
 
 /// A `.cnote` file is a zip with:
 ///   note.json        structured note data
-///   assets/<id>      embedded images / PDFs
+///   assets/ID        embedded images / PDFs (one file per asset id)
 ///   thumb.png        first-page thumbnail (optional)
 const noteExtension = '.cnote';
 
