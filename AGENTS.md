@@ -77,7 +77,6 @@ docs/superpowers/             design spec + original implementation plan
 
 ## Gotchas
 
-- **The repo lives inside a Proton Drive–synced folder.** Proton can rename build files mid-build into `… (# Name clash … #)` copies. If a build fails oddly, look for those files and rename them back, or clone the repo somewhere unsynced.
 - **A release build fails with `LNK1104`** when `caret_notes.exe` is running. Close the app first.
 - **In widget tests, file IO must run inside `tester.runAsync`.** Futures started in the fake clock never complete.
 - `PdfPageCache` evicts and disposes images (LRU, 24 pages). Don't keep `ui.Image` references from it across frames.
