@@ -129,6 +129,7 @@ class FolderTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = Theme.of(context);
     final color = Color(folder.meta.color);
+    final lib = context.watch<LibraryController>();
     final tile = DragTarget<String>(
       onWillAcceptWithDetails: (d) => d.data != folder.relPath && !folder.relPath.startsWith('${d.data}/'),
       onAcceptWithDetails: (d) => context.read<LibraryController>().move(d.data, folder.relPath),
@@ -140,7 +141,7 @@ class FolderTile extends StatelessWidget {
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           key: ValueKey('folder-tile-${folder.name}'),
-          onTap: () => context.read<LibraryController>().openFolder(folder.relPath),
+          onTap: () => lib.selecting ? lib.toggleSelect(folder.relPath) : lib.openFolder(folder.relPath),
           onSecondaryTapDown: (d) => showFolderMenu(context, folder, d.globalPosition),
           child: Padding(
             padding: const EdgeInsets.all(14),
@@ -153,7 +154,10 @@ class FolderTile extends StatelessWidget {
                   child: Icon(folderIcon(folder.meta.icon), color: Colors.white),
                 ),
                 const Spacer(),
-                _MoreButton(onTap: (pos) => showFolderMenu(context, folder, pos)),
+                if (lib.selecting)
+                  _Check(selected: lib.selected.contains(folder.relPath))
+                else
+                  _MoreButton(onTap: (pos) => showFolderMenu(context, folder, pos)),
               ]),
               const Spacer(),
               Text(folder.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: t.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
@@ -200,12 +204,17 @@ class NoteCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context);
-    final lib = context.read<LibraryController>();
+    final lib = context.watch<LibraryController>();
+    final isSel = lib.selected.contains(note.relPath);
     final card = Card(
       clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: isSel ? BorderSide(color: t.colorScheme.primary, width: 2.5) : BorderSide.none,
+      ),
       child: InkWell(
         key: ValueKey('note-card-${note.relPath}'),
-        onTap: () => openNote(context, note),
+        onTap: () => lib.selecting ? lib.toggleSelect(note.relPath) : openNote(context, note),
         onSecondaryTapDown: (d) => showNoteMenu(context, note, d.globalPosition),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Expanded(
@@ -236,14 +245,36 @@ class NoteCard extends StatelessWidget {
                 ]),
               ),
               if (note.favorite) Icon(Icons.star_rounded, size: 18, color: t.colorScheme.primary),
-              _MoreButton(onTap: (pos) => showNoteMenu(context, note, pos)),
+              if (lib.selecting) _Check(selected: isSel) else _MoreButton(onTap: (pos) => showNoteMenu(context, note, pos)),
             ]),
           ),
         ]),
       ),
     );
-    return _draggable(note.relPath, card, _feedback(context, layoutIcon(note.layout), note.title, t.colorScheme.primary));
+    // Drop another note of this folder here to place it before this one (manual order).
+    final target = DragTarget<String>(
+      onWillAcceptWithDetails: (d) =>
+          lib.view == HomeView.folder && d.data != note.relPath && LibraryStore.isNoteFile(d.data.split('/').last) && dirOfRel(d.data) == note.dir,
+      onAcceptWithDetails: (d) => lib.reorderBefore(d.data, note.relPath),
+      builder: (ctx, cand, _) => Stack(children: [
+        Positioned.fill(child: card),
+        if (cand.isNotEmpty)
+          Positioned(left: 0, top: 8, bottom: 8, child: Container(width: 4, decoration: BoxDecoration(color: t.colorScheme.primary, borderRadius: BorderRadius.circular(2)))),
+      ]),
+    );
+    return _draggable(note.relPath, target, _feedback(context, layoutIcon(note.layout), note.title, t.colorScheme.primary));
   }
+}
+
+class _Check extends StatelessWidget {
+  final bool selected;
+  const _Check({required this.selected});
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.all(8),
+        child: Icon(selected ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+            color: selected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.outline),
+      );
 }
 
 class NoteRow extends StatelessWidget {
@@ -267,7 +298,11 @@ class NoteRow extends StatelessWidget {
             if (note.favorite) Icon(Icons.star_rounded, size: 18, color: t.colorScheme.primary),
             _MoreButton(onTap: (pos) => showNoteMenu(context, note, pos)),
           ]),
-          onTap: () => openNote(context, note),
+          onTap: () {
+            final lib = context.read<LibraryController>();
+            lib.selecting ? lib.toggleSelect(note.relPath) : openNote(context, note);
+          },
+          selected: context.watch<LibraryController>().selected.contains(note.relPath),
         ),
       ),
       _feedback(context, layoutIcon(note.layout), note.title, t.colorScheme.primary),

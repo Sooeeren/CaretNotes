@@ -40,6 +40,52 @@ class LibraryController extends ChangeNotifier {
   FolderMeta currentMeta = const FolderMeta();
 
   Future<void>? lastLoad;
+
+  // ---- multi-select ----
+  bool selecting = false;
+  final Set<String> selected = {};
+
+  void setSelecting(bool on) {
+    selecting = on;
+    if (!on) selected.clear();
+    notifyListeners();
+  }
+
+  void toggleSelect(String relPath) {
+    selecting = true;
+    if (!selected.remove(relPath)) selected.add(relPath);
+    notifyListeners();
+  }
+
+  Future<void> moveSelected(String destDir) async {
+    for (final r in selected.toList()) {
+      if (r == destDir || destDir.startsWith('$r/')) continue;
+      await store.move(r, destDir);
+    }
+    selected.clear();
+    selecting = false;
+    await refresh();
+  }
+
+  Future<void> deleteSelected() async {
+    for (final r in selected.toList()) {
+      await store.trashItem(r);
+    }
+    selected.clear();
+    selecting = false;
+    await refresh();
+  }
+
+  /// Manual order: puts [dragged] right before [target] (both in the current folder).
+  Future<void> reorderBefore(String dragged, String target) async {
+    if (dragged == target) return;
+    final names = [for (final f in listing.folders) f.name, for (final n in listing.notes) n.fileName];
+    final d = dragged.split('/').last, t = target.split('/').last;
+    if (!names.contains(d) || !names.contains(t)) return;
+    names.remove(d);
+    names.insert(names.indexOf(t), d);
+    await reorder(names);
+  }
   final Map<String, (DateTime, Uint8List?)> _thumbs = {};
 
   Future<void> refresh() => lastLoad = _load();

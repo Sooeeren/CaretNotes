@@ -109,6 +109,13 @@ class _MainArea extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           if (lib.view == HomeView.folder) _SortMenu(meta: lib.currentMeta),
+          if (lib.view != HomeView.trash)
+            IconButton(
+              tooltip: 'Select several',
+              isSelected: lib.selecting,
+              icon: const Icon(Icons.checklist_rounded),
+              onPressed: () => lib.setSelecting(!lib.selecting),
+            ),
           IconButton(
             tooltip: lib.grid ? 'List view' : 'Grid view',
             icon: Icon(lib.grid ? Icons.view_list_rounded : Icons.grid_view_rounded),
@@ -132,6 +139,7 @@ class _MainArea extends StatelessWidget {
         ]),
       ),
       Expanded(child: _content(context, lib)),
+      if (lib.selecting) _SelectionBar(lib: lib),
     ]);
   }
 
@@ -168,6 +176,50 @@ class _MainArea extends StatelessWidget {
         ),
       ),
     ]);
+  }
+}
+
+class _SelectionBar extends StatelessWidget {
+  final LibraryController lib;
+  const _SelectionBar({required this.lib});
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context);
+    final n = lib.selected.length;
+    return Material(
+      color: t.colorScheme.surfaceContainerLow,
+      elevation: 6,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Row(children: [
+          Text(n == 0 ? 'Tap notes or folders to select them' : '$n selected', style: t.textTheme.titleSmall),
+          const Spacer(),
+          TextButton.icon(
+            onPressed: n == 0
+                ? null
+                : () async {
+                    final d = await pickFolder(context, lib.tree);
+                    if (d != null) await lib.moveSelected(d);
+                  },
+            icon: const Icon(Icons.drive_file_move_outline),
+            label: const Text('Move to…'),
+          ),
+          TextButton.icon(
+            onPressed: n == 0
+                ? null
+                : () async {
+                    if (await confirm(context, 'Delete $n item${n == 1 ? '' : 's'}?', 'They move to Recently deleted for 30 days.')) {
+                      await lib.deleteSelected();
+                    }
+                  },
+            icon: const Icon(Icons.delete_outline_rounded),
+            label: const Text('Delete'),
+          ),
+          const SizedBox(width: 8),
+          FilledButton.tonal(onPressed: () => lib.setSelecting(false), child: const Text('Done')),
+        ]),
+      ),
+    );
   }
 }
 

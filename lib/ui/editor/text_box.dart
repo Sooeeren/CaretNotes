@@ -84,6 +84,45 @@ class MarkdownEditingController extends TextEditingController {
   }
 }
 
+enum MdAction { heading, bold, italic, bullet, checkbox, code, math }
+
+/// Applies a formatting-bar action to the text: wraps the selection, or prefixes the line.
+TextEditingValue applyMarkdown(TextEditingValue v, MdAction a) {
+  final text = v.text;
+  final sel = v.selection.isValid ? v.selection : TextSelection.collapsed(offset: text.length);
+  String? prefix;
+  switch (a) {
+    case MdAction.heading:
+      prefix = '# ';
+    case MdAction.bullet:
+      prefix = '- ';
+    case MdAction.checkbox:
+      prefix = '- [ ] ';
+    default:
+      break;
+  }
+  if (prefix != null) {
+    final lineStart = sel.start == 0 ? 0 : text.lastIndexOf('\n', sel.start - 1) + 1;
+    final nt = text.replaceRange(lineStart, lineStart, prefix);
+    return TextEditingValue(
+      text: nt,
+      selection: TextSelection(baseOffset: sel.baseOffset + prefix.length, extentOffset: sel.extentOffset + prefix.length),
+    );
+  }
+  final mark = switch (a) {
+    MdAction.bold => '**',
+    MdAction.italic => '*',
+    MdAction.code => '`',
+    _ => r'$',
+  };
+  final inner = text.substring(sel.start, sel.end);
+  final nt = text.replaceRange(sel.start, sel.end, '$mark$inner$mark');
+  return TextEditingValue(
+    text: nt,
+    selection: TextSelection(baseOffset: sel.start + mark.length, extentOffset: sel.start + mark.length + inner.length),
+  );
+}
+
 /// Height in document points that [markdown] needs at [width], when editing.
 double measureMarkdownHeight(String markdown, double width, double fontSize) {
   final tp = TextPainter(
@@ -268,9 +307,50 @@ class _TextBoxEditorState extends State<TextBoxEditor> {
 
   void _changed(String v) => widget.onChanged(v, measureMarkdownHeight(v, widget.el.rect.width, widget.el.fontSize));
 
+  void _apply(MdAction a) {
+    _c.value = applyMarkdown(_c.value, a);
+    _changed(_c.text);
+    _focus.requestFocus();
+  }
+
+  Widget _bar(BuildContext context) {
+    Widget b(MdAction a, Widget icon, String tip) => Tooltip(
+          message: tip,
+          child: InkWell(
+            canRequestFocus: false,
+            borderRadius: BorderRadius.circular(6),
+            onTap: () => _apply(a),
+            child: Padding(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3), child: icon),
+          ),
+        );
+    const s = 15.0;
+    return Material(
+      elevation: 2,
+      borderRadius: BorderRadius.circular(8),
+      color: Theme.of(context).colorScheme.surfaceContainerLow,
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        b(MdAction.heading, const Text('H', style: TextStyle(fontWeight: FontWeight.w800, fontSize: s)), 'Heading'),
+        b(MdAction.bold, const Icon(Icons.format_bold_rounded, size: s + 3), 'Bold'),
+        b(MdAction.italic, const Icon(Icons.format_italic_rounded, size: s + 3), 'Italic'),
+        b(MdAction.bullet, const Icon(Icons.format_list_bulleted_rounded, size: s + 3), 'List'),
+        b(MdAction.checkbox, const Icon(Icons.check_box_outlined, size: s + 3), 'Checkbox'),
+        b(MdAction.code, const Icon(Icons.code_rounded, size: s + 3), 'Code'),
+        b(MdAction.math, const Text('∑', style: TextStyle(fontSize: s)), 'Math (LaTeX)'),
+      ]),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final color = Color(widget.el.color);
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+      _bar(context),
+      const SizedBox(height: 4),
+      _field(context, color),
+    ]);
+  }
+
+  Widget _field(BuildContext context, Color color) {
     return Container(
       decoration: BoxDecoration(
         border: Border.all(color: Theme.of(context).colorScheme.primary, width: 1.2),
