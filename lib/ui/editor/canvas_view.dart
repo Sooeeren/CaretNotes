@@ -762,6 +762,12 @@ class _CanvasViewState extends State<CanvasView> {
                 onPressed: () => cropImageAction?.call(context, c, single),
               ),
             IconButton(tooltip: 'Duplicate', icon: const Icon(Icons.control_point_duplicate_rounded, size: 20), onPressed: c.duplicateSelection),
+            if (exportSelectionAction != null)
+              IconButton(
+                tooltip: 'Save as image',
+                icon: const Icon(Icons.image_outlined, size: 20),
+                onPressed: () => exportSelectionAction!(context, c.note, c.selPageId!, c.selectionRect!),
+              ),
             IconButton(tooltip: 'Copy', icon: const Icon(Icons.copy_rounded, size: 20), onPressed: c.copySelection),
             IconButton(tooltip: 'Cut', icon: const Icon(Icons.content_cut_rounded, size: 20), onPressed: c.cutSelection),
             IconButton(tooltip: 'Delete', icon: const Icon(Icons.delete_outline_rounded, size: 20), onPressed: c.deleteSelection),
@@ -774,6 +780,9 @@ class _CanvasViewState extends State<CanvasView> {
 
 /// Image crop UI is provided by image_box.dart.
 Future<void> Function(BuildContext, EditorController, ImageEl)? cropImageAction;
+
+/// "Save selection as image", provided by the export dialog.
+Future<void> Function(BuildContext, Note, String pageId, RectD rect)? exportSelectionAction;
 
 class _LivePainter extends CustomPainter {
   final LiveInk live;

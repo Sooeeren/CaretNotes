@@ -6,6 +6,8 @@ import 'controllers.dart';
 import 'home/home_screen.dart';
 import 'theme.dart';
 
+final appNavigatorKey = GlobalKey<NavigatorState>();
+
 /// Route builders registered by feature modules (editor, settings).
 final Map<String, Widget Function(Object? args)> appRoutes = {};
 
@@ -18,6 +20,7 @@ class CaretNotesApp extends StatelessWidget {
     final accent = Color(s.accent);
     return MaterialApp(
       title: 'CaretNotes',
+      navigatorKey: appNavigatorKey,
       debugShowCheckedModeBanner: false,
       theme: buildTheme(accent, Brightness.light),
       darkTheme: buildTheme(accent, Brightness.dark),

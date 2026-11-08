@@ -10,6 +10,8 @@ import 'controllers.dart';
 import 'editor/canvas_view.dart';
 import 'editor/editor_screen.dart';
 import 'editor/image_box.dart';
+import 'export_dialog.dart';
+import 'home/folder_grid.dart';
 import 'home/home_screen.dart';
 import 'settings_screen.dart';
 import 'sync/sync_controller.dart';
@@ -28,6 +30,9 @@ Future<List<SingleChildWidget>> wireFeatures({
   appRoutes['/settings'] = (_) => const SettingsScreen();
   importPdfAction = importPdfIntoLibrary;
   cropImageAction = cropImage;
+  exportNoteAction = exportEntry;
+  editorExportAction = (ctx, note, relPath) => showExportDialog(ctx, note);
+  exportSelectionAction = exportSelectionImage;
   sidebarFooterBuilder = (_) => const SyncStatusTile();
   onNoteOpened = sync.noteOpened;
   onNoteClosed = sync.noteClosed;

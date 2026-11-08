@@ -12,7 +12,7 @@ import 'ui/app.dart';
 import 'ui/controllers.dart';
 import 'ui/wiring.dart';
 
-Future<void> main() async {
+Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
   pdfrxFlutterInitialize();
 
@@ -43,4 +43,12 @@ Future<void> main() async {
     ],
     child: const CaretNotesApp(),
   ));
+
+  // `--open=<path relative to the library>` opens a note directly (handy for testing).
+  for (final a in args) {
+    if (a.startsWith('--open=')) {
+      final rel = a.substring(7);
+      WidgetsBinding.instance.addPostFrameCallback((_) => appNavigatorKey.currentState?.pushNamed('/editor', arguments: rel));
+    }
+  }
 }

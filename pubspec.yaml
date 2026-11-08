@@ -57,6 +57,7 @@ dependencies:
   ffi: ^2.2.0
   markdown: ^7.3.0
   xml: ^6.6.1
+  vector_math: ^2.1.4
 
 dev_dependencies:
   flutter_test:
