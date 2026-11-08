@@ -110,4 +110,74 @@ void main() {
     const hl = StrokeEl(id: 'h', points: [InkPoint(0, 0, 1)], tool: ToolKind.highlighter, color: 0, width: 1);
     expect(paintOrder([pen, hl]).map((e) => e.id), ['h', 'p']);
   });
+
+  group('selection and shapes', () {
+    test('lasso then move translates the selection bounds by the delta', () {
+      final c = make();
+      draw(c, const [Vec2(10, 10), Vec2(30, 10)]);
+      final pid = c.note.pages.first.id;
+      c.selectLasso(pid, const [Vec2(0, 0), Vec2(50, 0), Vec2(50, 30), Vec2(0, 30)]);
+      expect(c.hasSelection, isTrue);
+      final before = c.selectionRect!;
+      c.moveSelection(100, 50);
+      final after = c.selectionRect!;
+      expect(after.left - before.left, closeTo(100, 1e-9));
+      expect(after.top - before.top, closeTo(50, 1e-9));
+    });
+
+    test('deleting a selection is undoable', () {
+      final c = make();
+      draw(c, const [Vec2(10, 10), Vec2(30, 10)]);
+      final pid = c.note.pages.first.id;
+      c.selectBox(pid, const RectD(0, 0, 50, 50));
+      c.deleteSelection();
+      expect(c.note.pages.first.elements, isEmpty);
+      c.undo();
+      expect(c.note.pages.first.elements.length, 1);
+    });
+
+    test('holding after a rough line snaps it to a straight 2-point line', () {
+      final c = make();
+      final pid = c.note.pages.first.id;
+      c.beginStroke(pid, const InkPoint(0, 100, .5), ToolKind.pen);
+      for (var i = 1; i <= 40; i++) {
+        c.extendStroke(InkPoint(i * 5.0, 100 + (i.isEven ? 1.2 : -1.2), .5));
+      }
+      expect(c.snapLiveToShape(), isTrue);
+      c.extendStroke(const InkPoint(260, 140, .5)); // still down: end point follows the pen
+      c.endStroke();
+      final s = c.note.pages.first.elements.single as StrokeEl;
+      expect(s.points.first.x, closeTo(0, 1e-9));
+      expect(s.points.last.x, closeTo(260, 1e-9));
+      expect(s.points.last.y, closeTo(140, 1e-9));
+    });
+
+    test('paste puts copies with new ids', () {
+      final c = make();
+      draw(c, const [Vec2(10, 10), Vec2(30, 10)]);
+      final pid = c.note.pages.first.id;
+      c.selectBox(pid, const RectD(0, 0, 50, 50));
+      c.copySelection();
+      c.paste(pid);
+      final ids = c.note.pages.first.elements.map((e) => e.id).toSet();
+      expect(ids.length, 2);
+    });
+
+    test('switching paged -> endless -> paged keeps every element', () {
+      final c = make();
+      c.addPage();
+      draw(c, const [Vec2(10, 10), Vec2(30, 10)]);
+      final p2 = c.note.pages[1].id;
+      c.beginStroke(p2, const InkPoint(10, 10, .5), ToolKind.pen);
+      c.extendStroke(const InkPoint(40, 40, .5));
+      c.endStroke();
+      c.switchLayout();
+      expect(c.note.layout, NoteLayout.endless);
+      expect(c.note.pages.single.elements.length, 2);
+      c.switchLayout();
+      expect(c.note.layout, NoteLayout.paged);
+      expect(c.note.pages.length, 2);
+      expect(c.note.pages[1].elements.length, 1);
+    });
+  });
 }
