@@ -3,7 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:flutter_math_fork/flutter_math.dart';
-import 'package:highlight/highlight.dart' show highlight, Node;
+import 'package:highlight/highlight.dart' show highlight, Node, Result;
 import 'package:markdown/markdown.dart' as md;
 
 import '../../core/model/elements.dart';
@@ -151,15 +151,24 @@ class _Highlighter extends SyntaxHighlighter {
     'meta': Color(0xFF61AFEF),
   };
 
+  static const _languages = [
+    'python', 'java', 'cpp', 'c', 'javascript', 'typescript', 'dart', 'kotlin', 'cs', 'go', 'rust',
+    'bash', 'sql', 'json', 'matlab', 'r', 'latex', 'xml', 'css', 'haskell', 'scala', 'php',
+  ];
+
   @override
   TextSpan format(String source) {
     final base = TextStyle(fontFamily: 'Consolas', fontSize: fontSize * 0.92, color: dark ? const Color(0xFFABB2BF) : const Color(0xFF383A42));
-    try {
-      final result = highlight.parse(source, autoDetection: true);
-      return TextSpan(style: base, children: _spans(result.nodes ?? const []));
-    } catch (_) {
-      return TextSpan(text: source, style: base);
+    // Auto-detect among common languages (full auto-detection runs grammars that log errors).
+    Result? best;
+    for (final lang in _languages) {
+      try {
+        final r = highlight.parse(source, language: lang);
+        if (best == null || (r.relevance ?? 0) > (best.relevance ?? 0)) best = r;
+      } catch (_) {}
     }
+    if (best == null || (best.relevance ?? 0) < 2) return TextSpan(text: source, style: base);
+    return TextSpan(style: base, children: _spans(best.nodes ?? const []));
   }
 
   List<TextSpan> _spans(List<Node> nodes) {
@@ -293,15 +302,11 @@ class ScaledBox extends StatelessWidget {
   final Widget child;
   const ScaledBox({super.key, required this.width, required this.height, required this.scale, required this.child});
   @override
-  Widget build(BuildContext context) => Transform.scale(
-        scale: scale,
-        alignment: Alignment.topLeft,
-        child: OverflowBox(
+  Widget build(BuildContext context) => SizedBox(
+        width: width * scale,
+        child: FittedBox(
+          fit: BoxFit.fitWidth,
           alignment: Alignment.topLeft,
-          minWidth: width,
-          maxWidth: width,
-          minHeight: 0,
-          maxHeight: double.infinity,
           child: SizedBox(width: width, child: child),
         ),
       );

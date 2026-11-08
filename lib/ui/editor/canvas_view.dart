@@ -183,7 +183,7 @@ class _CanvasViewState extends State<CanvasView> {
   double get _minScale => _isCanvas ? 0.08 : 0.25;
   double get _maxScale => 8;
 
-  void _fit() {
+  void _fit({bool rebuild = true}) {
     if (_viewSize.isEmpty) return;
     if (_isCanvas) {
       _scale = 1;
@@ -192,7 +192,7 @@ class _CanvasViewState extends State<CanvasView> {
       _scale = ((_viewSize.width - 48) / _docWidth).clamp(_minScale, 1.6);
       _offset = Offset((_viewSize.width - _docWidth * _scale) / 2, 24);
     }
-    setState(() {});
+    if (rebuild) setState(() {});
   }
 
   void _showPage(int i) {
@@ -566,7 +566,7 @@ class _CanvasViewState extends State<CanvasView> {
         _viewSize = size;
         if (!_init) {
           _init = true;
-          _fit();
+          _fit(rebuild: false); // we're inside build already
         } else {
           _clamp();
         }

@@ -54,9 +54,22 @@ class _EditorScreenState extends State<EditorScreen> {
   final _areaKey = GlobalKey();
   bool _closing = false;
 
+  late final AppLifecycleListener _lifecycle;
+
   @override
   void initState() {
     super.initState();
+    // Never lose the last strokes: save when the window closes or the app goes to the background.
+    _lifecycle = AppLifecycleListener(
+      onExitRequested: () async {
+        try {
+          await _c?.close();
+        } catch (_) {}
+        return ui.AppExitResponse.exit;
+      },
+      onHide: () => _c?.save(),
+      onPause: () => _c?.save(),
+    );
     _load();
   }
 
@@ -98,6 +111,7 @@ class _EditorScreenState extends State<EditorScreen> {
 
   @override
   void dispose() {
+    _lifecycle.dispose();
     _c?.removeListener(_onNoteChanged);
     _c?.dispose();
     if (_c != null) _pdf.dispose();

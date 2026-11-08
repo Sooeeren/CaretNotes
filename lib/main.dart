@@ -16,7 +16,9 @@ Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
   pdfrxFlutterInitialize();
 
-  final support = await getApplicationSupportDirectory();
+  // CARETNOTES_HOME lets you run a separate profile (tests, demos, a second "device").
+  final home = Platform.environment['CARETNOTES_HOME'];
+  final support = home != null && home.isNotEmpty ? await Directory(home).create(recursive: true) : await getApplicationSupportDirectory();
   final settingsPath = p.join(support.path, 'settings.json');
   var settings = await AppSettings.load(settingsPath);
   if (settings.deviceName.isEmpty) {
