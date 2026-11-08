@@ -53,8 +53,8 @@ class _PageStripState extends State<PageStrip> {
                 padding: const EdgeInsets.fromLTRB(12, 8, 4, 0),
                 child: Row(children: [
                   Expanded(child: Text('Pages (${n.pages.length})', style: t.textTheme.titleSmall)),
-                  IconButton(tooltip: 'Add page', icon: const Icon(Icons.add_rounded), onPressed: () => c.addPage()),
-                  IconButton(tooltip: 'Close', icon: const Icon(Icons.close_rounded), onPressed: widget.onClose),
+                  IconButton(tooltip: 'Add page', icon: const Icon(Icons.add), onPressed: () => c.addPage()),
+                  IconButton(tooltip: 'Close', icon: const Icon(Icons.close), onPressed: widget.onClose),
                 ]),
               ),
               Expanded(
@@ -95,7 +95,7 @@ class _PageStripState extends State<PageStrip> {
                                 builder: (bctx) => IconButton(
                                   visualDensity: VisualDensity.compact,
                                   iconSize: 18,
-                                  icon: const Icon(Icons.more_horiz_rounded),
+                                  icon: const Icon(Icons.more_horiz),
                                   onPressed: () {
                                     final box = bctx.findRenderObject() as RenderBox;
                                     _menu(context, i, box.localToGlobal(Offset.zero));

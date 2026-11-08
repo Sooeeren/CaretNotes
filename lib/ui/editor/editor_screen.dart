@@ -414,7 +414,7 @@ class _EditorScreenState extends State<EditorScreen> {
     final n = c.note;
     return PopupMenuButton<String>(
       tooltip: 'More',
-      icon: const Icon(Icons.more_vert_rounded),
+      icon: const Icon(Icons.more_vert),
       onSelected: (v) async {
         switch (v) {
           case 'pages':

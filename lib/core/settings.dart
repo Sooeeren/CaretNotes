@@ -10,6 +10,9 @@ enum ToolbarDock { top, left, right, floating }
 enum SyncProvider { none, folder, webdav, gdrive }
 
 class AppSettings {
+  static const defaultAccent = 0xFFD9772B;
+  static const _oldDefaultAccent = 0xFFFF8A1F;
+
   final ThemePref theme;
   final int accent;
   final bool fingerDrawing;
@@ -26,7 +29,7 @@ class AppSettings {
 
   const AppSettings({
     this.theme = ThemePref.system,
-    this.accent = 0xFFFF8A1F,
+    this.accent = defaultAccent,
     this.fingerDrawing = false,
     this.sideButton = SideButtonAction.eraser,
     this.toolbarDock = ToolbarDock.top,
@@ -88,7 +91,10 @@ class AppSettings {
     const d = AppSettings();
     return AppSettings(
       theme: e(ThemePref.values, j['theme'], d.theme),
-      accent: j['accent'] as int? ?? d.accent,
+      accent: switch (j['accent'] as int?) {
+        null || _oldDefaultAccent => d.accent, // move users off the old, louder default
+        final int a => a,
+      },
       fingerDrawing: j['finger'] as bool? ?? d.fingerDrawing,
       sideButton: e(SideButtonAction.values, j['sideButton'], d.sideButton),
       toolbarDock: e(ToolbarDock.values, j['dock'], d.toolbarDock),

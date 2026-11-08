@@ -267,7 +267,7 @@ class RenderedMarkdown extends StatelessWidget {
         syntaxHighlighter: _Highlighter(el.fontSize, dark),
         checkboxBuilder: (v) => Padding(
           padding: const EdgeInsets.only(right: 4),
-          child: Icon(v ? Icons.check_box_rounded : Icons.check_box_outline_blank_rounded, size: el.fontSize * 1.15, color: color),
+          child: Icon(v ? Icons.check_box : Icons.check_box_outline_blank, size: el.fontSize * 1.15, color: color),
         ),
       ),
     );
@@ -330,11 +330,11 @@ class _TextBoxEditorState extends State<TextBoxEditor> {
       color: Theme.of(context).colorScheme.surfaceContainerLow,
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         b(MdAction.heading, const Text('H', style: TextStyle(fontWeight: FontWeight.w800, fontSize: s)), 'Heading'),
-        b(MdAction.bold, const Icon(Icons.format_bold_rounded, size: s + 3), 'Bold'),
-        b(MdAction.italic, const Icon(Icons.format_italic_rounded, size: s + 3), 'Italic'),
-        b(MdAction.bullet, const Icon(Icons.format_list_bulleted_rounded, size: s + 3), 'List'),
+        b(MdAction.bold, const Icon(Icons.format_bold, size: s + 3), 'Bold'),
+        b(MdAction.italic, const Icon(Icons.format_italic, size: s + 3), 'Italic'),
+        b(MdAction.bullet, const Icon(Icons.format_list_bulleted, size: s + 3), 'List'),
         b(MdAction.checkbox, const Icon(Icons.check_box_outlined, size: s + 3), 'Checkbox'),
-        b(MdAction.code, const Icon(Icons.code_rounded, size: s + 3), 'Code'),
+        b(MdAction.code, const Icon(Icons.code, size: s + 3), 'Code'),
         b(MdAction.math, const Text('∑', style: TextStyle(fontSize: s)), 'Math (LaTeX)'),
       ]),
     );

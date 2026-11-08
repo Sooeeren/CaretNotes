@@ -135,7 +135,7 @@ class SettingsScreen extends StatelessWidget {
               ListTile(
                 title: const Text('Library folder on this device'),
                 subtitle: Text(context.read<LibraryStore>().root),
-                trailing: const Icon(Icons.folder_open_rounded),
+                trailing: const Icon(Icons.folder_open),
                 onTap: () => launchUrl(Uri.file(context.read<LibraryStore>().root)),
               ),
             ]),
@@ -195,9 +195,9 @@ class _SyncSettingsState extends State<_SyncSettings> {
         );
 
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      providerTile(SyncProvider.none, 'Off', 'Notes stay on this device only', Icons.cloud_off_rounded),
+      providerTile(SyncProvider.none, 'Off', 'Notes stay on this device only', Icons.cloud_off),
       providerTile(SyncProvider.folder, 'Synced folder (Proton Drive, OneDrive, Dropbox…)',
-          'Pick a folder that your cloud\'s desktop app keeps in sync', Icons.folder_shared_rounded),
+          'Pick a folder that your cloud\'s desktop app keeps in sync', Icons.folder_shared),
       if (s.syncProvider == SyncProvider.folder)
         Padding(
           padding: const EdgeInsets.fromLTRB(72, 0, 16, 12),
@@ -220,7 +220,7 @@ class _SyncSettingsState extends State<_SyncSettings> {
             ),
           ]),
         ),
-      providerTile(SyncProvider.gdrive, 'Google Drive', 'Signs in with your Google account; notes go into a "CaretNotes" folder', Icons.add_to_drive_rounded),
+      providerTile(SyncProvider.gdrive, 'Google Drive', 'Signs in with your Google account; notes go into a "CaretNotes" folder', Icons.add_to_drive),
       if (s.syncProvider == SyncProvider.gdrive)
         Padding(
           padding: const EdgeInsets.fromLTRB(72, 0, 16, 12),
@@ -243,7 +243,7 @@ class _SyncSettingsState extends State<_SyncSettings> {
             Row(children: [
               if (!_googleSignedIn)
                 FilledButton.icon(
-                  icon: const Icon(Icons.login_rounded),
+                  icon: const Icon(Icons.login),
                   label: const Text('Sign in with Google'),
                   onPressed: _clientId.text.trim().isEmpty
                       ? null
@@ -257,7 +257,7 @@ class _SyncSettingsState extends State<_SyncSettings> {
                         },
                 )
               else ...[
-                const Icon(Icons.check_circle_rounded, color: Colors.green),
+                const Icon(Icons.check_circle, color: Colors.green),
                 const SizedBox(width: 8),
                 const Text('Signed in'),
                 const SizedBox(width: 16),
@@ -272,7 +272,7 @@ class _SyncSettingsState extends State<_SyncSettings> {
             ]),
           ]),
         ),
-      providerTile(SyncProvider.webdav, 'WebDAV (Nextcloud and others)', 'Any server that speaks WebDAV', Icons.dns_rounded),
+      providerTile(SyncProvider.webdav, 'WebDAV (Nextcloud and others)', 'Any server that speaks WebDAV', Icons.dns),
       if (s.syncProvider == SyncProvider.webdav)
         Padding(
           padding: const EdgeInsets.fromLTRB(72, 0, 16, 12),
@@ -293,7 +293,7 @@ class _SyncSettingsState extends State<_SyncSettings> {
             Align(
               alignment: Alignment.centerRight,
               child: FilledButton.icon(
-                icon: const Icon(Icons.link_rounded),
+                icon: const Icon(Icons.link),
                 label: const Text('Connect'),
                 onPressed: () async {
                   // Applied only here (not per keystroke), so half-typed addresses never get synced to.
@@ -307,7 +307,7 @@ class _SyncSettingsState extends State<_SyncSettings> {
         ),
       if (s.syncProvider != SyncProvider.none)
         ListTile(
-          leading: Icon(sync.status == SyncStatus.error ? Icons.error_outline_rounded : Icons.cloud_sync_rounded,
+          leading: Icon(sync.status == SyncStatus.error ? Icons.error_outline : Icons.cloud_sync,
               color: sync.status == SyncStatus.error ? t.colorScheme.error : null),
           title: Text(switch (sync.status) {
             SyncStatus.syncing => 'Syncing…',

@@ -22,11 +22,11 @@ class SyncStatusTile extends StatelessWidget {
     final s = context.watch<SyncController>();
     final t = Theme.of(context);
     final (icon, text, color) = switch (s.status) {
-      SyncStatus.disabled => (Icons.cloud_off_rounded, 'Sync is off', t.colorScheme.onSurfaceVariant),
-      SyncStatus.syncing => (Icons.cloud_sync_rounded, 'Syncing…', t.colorScheme.primary),
-      SyncStatus.offline => (Icons.cloud_off_rounded, 'Offline — will retry', t.colorScheme.onSurfaceVariant),
-      SyncStatus.error => (Icons.error_outline_rounded, s.lastError ?? 'Sync failed', t.colorScheme.error),
-      SyncStatus.idle => (Icons.cloud_done_rounded, s.lastSync == null ? 'Ready to sync' : 'Synced ${_ago(s.lastSync!)}', t.colorScheme.onSurfaceVariant),
+      SyncStatus.disabled => (Icons.cloud_off, 'Sync is off', t.colorScheme.onSurfaceVariant),
+      SyncStatus.syncing => (Icons.cloud_sync, 'Syncing…', t.colorScheme.primary),
+      SyncStatus.offline => (Icons.cloud_off, 'Offline — will retry', t.colorScheme.onSurfaceVariant),
+      SyncStatus.error => (Icons.error_outline, s.lastError ?? 'Sync failed', t.colorScheme.error),
+      SyncStatus.idle => (Icons.cloud_done, s.lastSync == null ? 'Ready to sync' : 'Synced ${_ago(s.lastSync!)}', t.colorScheme.onSurfaceVariant),
     };
     return Padding(
       padding: const EdgeInsets.fromLTRB(8, 4, 8, 0),
@@ -41,7 +41,7 @@ class SyncStatusTile extends StatelessWidget {
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 child: Row(children: [
-                  Icon(Icons.merge_type_rounded, color: t.colorScheme.onErrorContainer),
+                  Icon(Icons.merge_type, color: t.colorScheme.onErrorContainer),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text('${s.conflicts.length} note${s.conflicts.length == 1 ? '' : 's'} changed on two devices — choose',
@@ -64,7 +64,7 @@ class SyncStatusTile extends StatelessWidget {
           if (s.enabled)
             IconButton(
               tooltip: 'Sync now',
-              icon: const Icon(Icons.sync_rounded),
+              icon: const Icon(Icons.sync),
               onPressed: s.status == SyncStatus.syncing ? null : () => s.syncNow(),
             ),
         ]),
@@ -124,7 +124,7 @@ class _ConflictDialog extends StatelessWidget {
         OutlinedButton(onPressed: () => s.resolve(c, Resolution.keepRemote), child: const Text('Keep other device\'s')),
         FilledButton.icon(
           onPressed: () => s.resolve(c, Resolution.combine),
-          icon: const Icon(Icons.merge_rounded),
+          icon: const Icon(Icons.merge),
           label: const Text('Combine both'),
         ),
       ],

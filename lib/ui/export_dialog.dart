@@ -180,7 +180,7 @@ class _ExportDialogState extends State<_ExportDialog> {
         child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
           SegmentedButton<ExportFormat>(
             segments: const [
-              ButtonSegment(value: ExportFormat.pdf, label: Text('PDF'), icon: Icon(Icons.picture_as_pdf_rounded)),
+              ButtonSegment(value: ExportFormat.pdf, label: Text('PDF'), icon: Icon(Icons.picture_as_pdf)),
               ButtonSegment(value: ExportFormat.png, label: Text('PNG')),
               ButtonSegment(value: ExportFormat.jpg, label: Text('JPG')),
             ],
@@ -224,7 +224,7 @@ class _ExportDialogState extends State<_ExportDialog> {
         TextButton(onPressed: _busy ? null : () => Navigator.pop(context), child: const Text('Cancel')),
         FilledButton.icon(
           onPressed: _busy ? null : _run,
-          icon: _busy ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.ios_share_rounded),
+          icon: _busy ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.ios_share),
           label: const Text('Export'),
         ),
       ],

@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../core/library/library_store.dart';
 import '../controllers.dart';
 import '../folder_style.dart';
+import '../theme.dart';
 import 'dialogs.dart';
 import 'sidebar.dart';
 
@@ -114,10 +115,11 @@ Widget _draggable(String data, Widget child, Widget feedback) => LongPressDragga
 
 Widget _feedback(BuildContext context, IconData icon, String label, Color color) => Material(
       elevation: 6,
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(8),
+      color: Theme.of(context).colorScheme.surfaceContainer,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [Icon(icon, color: color), const SizedBox(width: 8), Text(label)]),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [Icon(icon, color: color, size: 18), const SizedBox(width: 8), Text(label)]),
       ),
     );
 
@@ -128,42 +130,37 @@ class FolderTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context);
+    final tk = AppTokens.of(context);
     final color = Color(folder.meta.color);
     final lib = context.watch<LibraryController>();
+    final isSel = lib.selected.contains(folder.relPath);
     final tile = DragTarget<String>(
       onWillAcceptWithDetails: (d) => d.data != folder.relPath && !folder.relPath.startsWith('${d.data}/'),
       onAcceptWithDetails: (d) => context.read<LibraryController>().move(d.data, folder.relPath),
-      builder: (ctx, cand, _) => Card(
+      builder: (ctx, cand, _) => Material(
+        color: t.colorScheme.surfaceContainerLow,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: cand.isNotEmpty ? BorderSide(color: t.colorScheme.primary, width: 2) : BorderSide.none,
+          borderRadius: BorderRadius.circular(10),
+          side: BorderSide(color: cand.isNotEmpty || isSel ? t.colorScheme.primary : tk.hairline, width: cand.isNotEmpty || isSel ? 1.5 : 1),
         ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           key: ValueKey('folder-tile-${folder.name}'),
+          hoverColor: tk.selectedFill,
           onTap: () => lib.selecting ? lib.toggleSelect(folder.relPath) : lib.openFolder(folder.relPath),
           onSecondaryTapDown: (d) => showFolderMenu(context, folder, d.globalPosition),
           child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(12)),
-                  child: Icon(folderIcon(folder.meta.icon), color: Colors.white),
-                ),
-                const Spacer(),
-                if (lib.selecting)
-                  _Check(selected: lib.selected.contains(folder.relPath))
-                else
-                  _MoreButton(onTap: (pos) => showFolderMenu(context, folder, pos)),
-              ]),
-              const Spacer(),
-              Text(folder.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: t.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
-              const SizedBox(height: 2),
-              Text('${folder.itemCount} ${folder.itemCount == 1 ? 'item' : 'items'}',
-                  style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onSurfaceVariant)),
+            padding: const EdgeInsets.only(left: 14, right: 2),
+            child: Row(children: [
+              Icon(folderIcon(folder.meta.icon), color: color, size: 22),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(folder.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: t.textTheme.titleSmall),
+                  Text('${folder.itemCount} ${folder.itemCount == 1 ? 'item' : 'items'}', style: t.textTheme.bodySmall),
+                ]),
+              ),
+              if (lib.selecting) _Check(selected: isSel) else _MoreButton(onTap: (pos) => showFolderMenu(context, folder, pos)),
             ]),
           ),
         ),
@@ -181,7 +178,8 @@ class _MoreButton extends StatelessWidget {
         builder: (ctx) => IconButton(
           tooltip: 'More',
           visualDensity: VisualDensity.compact,
-          icon: const Icon(Icons.more_vert_rounded),
+          iconSize: 18,
+          icon: const Icon(Icons.more_horiz),
           onPressed: () {
             final box = ctx.findRenderObject() as RenderBox;
             onTap(box.localToGlobal(box.size.bottomLeft(Offset.zero)));
@@ -191,10 +189,45 @@ class _MoreButton extends StatelessWidget {
 }
 
 IconData layoutIcon(String layout) => switch (layout) {
-      'endless' => Icons.view_day_rounded,
-      'canvas' => Icons.all_out_rounded,
-      _ => Icons.description_rounded,
+      'endless' => Icons.view_agenda_outlined,
+      'canvas' => Icons.crop_free,
+      _ => Icons.description_outlined,
     };
+
+/// Empty sheet shown until a note has a rendered thumbnail.
+class _PaperPlaceholder extends StatelessWidget {
+  final String layout;
+  const _PaperPlaceholder({required this.layout});
+  @override
+  Widget build(BuildContext context) => CustomPaint(painter: _PaperPainter(layout), child: const SizedBox.expand());
+}
+
+class _PaperPainter extends CustomPainter {
+  final String layout;
+  _PaperPainter(this.layout);
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.drawRect(Offset.zero & size, Paint()..color = Colors.white);
+    final line = Paint()
+      ..color = const Color(0xFFDDE3EC)
+      ..strokeWidth = 1;
+    if (layout == 'canvas') {
+      for (var y = 10.0; y < size.height; y += 12) {
+        for (var x = 10.0; x < size.width; x += 12) {
+          canvas.drawCircle(Offset(x, y), 0.8, line);
+        }
+      }
+      return;
+    }
+    for (var y = 28.0; y < size.height; y += 12) {
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), line);
+    }
+    canvas.drawLine(const Offset(18, 0), Offset(18, size.height), Paint()..color = const Color(0x40E06666));
+  }
+
+  @override
+  bool shouldRepaint(_PaperPainter old) => old.layout != layout;
+}
 
 class NoteCard extends StatelessWidget {
   final NoteEntry note;
@@ -204,50 +237,66 @@ class NoteCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context);
+    final tk = AppTokens.of(context);
     final lib = context.watch<LibraryController>();
     final isSel = lib.selected.contains(note.relPath);
-    final card = Card(
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: isSel ? BorderSide(color: t.colorScheme.primary, width: 2.5) : BorderSide.none,
-      ),
-      child: InkWell(
-        key: ValueKey('note-card-${note.relPath}'),
-        onTap: () => lib.selecting ? lib.toggleSelect(note.relPath) : openNote(context, note),
-        onSecondaryTapDown: (d) => showNoteMenu(context, note, d.globalPosition),
+    final sub = note.damaged
+        ? 'Damaged file'
+        : (showFolder && note.dir.isNotEmpty ? '${formatDate(note.modified)} · ${note.dir}' : formatDate(note.modified));
+
+    // A sheet of paper with the title underneath, like a notebook on a shelf.
+    final card = InkWell(
+      key: ValueKey('note-card-${note.relPath}'),
+      borderRadius: BorderRadius.circular(10),
+      hoverColor: tk.selectedFill,
+      onTap: () => lib.selecting ? lib.toggleSelect(note.relPath) : openNote(context, note),
+      onSecondaryTapDown: (d) => showNoteMenu(context, note, d.globalPosition),
+      child: Padding(
+        padding: const EdgeInsets.all(6),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Expanded(
-            child: Container(
-              color: t.brightness == Brightness.dark ? const Color(0xFF2A2E35) : const Color(0xFFF0F2F6),
-              child: note.damaged
-                  ? Center(child: Icon(Icons.broken_image_outlined, size: 40, color: t.colorScheme.error))
-                  : FutureBuilder<Uint8List?>(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: isSel ? t.colorScheme.primary : tk.hairline, width: isSel ? 2 : 1),
+                boxShadow: const [BoxShadow(color: Color(0x14000000), blurRadius: 6, offset: Offset(0, 2))],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(5),
+                child: Stack(fit: StackFit.expand, children: [
+                  if (note.damaged)
+                    ColoredBox(
+                      color: t.colorScheme.surfaceContainerHigh,
+                      child: Center(child: Icon(Icons.broken_image_outlined, size: 32, color: t.colorScheme.error)),
+                    )
+                  else
+                    FutureBuilder<Uint8List?>(
                       future: lib.thumb(note),
                       builder: (ctx, s) => s.data == null
-                          ? Center(child: Icon(layoutIcon(note.layout), size: 36, color: t.colorScheme.outlineVariant))
+                          ? _PaperPlaceholder(layout: note.layout)
                           : Image.memory(s.data!, fit: BoxFit.cover, alignment: Alignment.topCenter, gaplessPlayback: true),
                     ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
-            child: Row(children: [
-              Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(note.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: t.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
-                  Text(
-                    note.damaged ? 'Damaged file' : (showFolder && note.dir.isNotEmpty ? '${formatDate(note.modified)} · ${note.dir}' : formatDate(note.modified)),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: t.textTheme.bodySmall?.copyWith(color: note.damaged ? t.colorScheme.error : t.colorScheme.onSurfaceVariant),
-                  ),
+                  if (lib.selecting) Positioned(top: 0, right: 0, child: _Check(selected: isSel)),
+                  if (note.favorite && !lib.selecting)
+                    Positioned(top: 6, right: 6, child: Icon(Icons.star, size: 16, color: t.colorScheme.primary)),
                 ]),
               ),
-              if (note.favorite) Icon(Icons.star_rounded, size: 18, color: t.colorScheme.primary),
-              if (lib.selecting) _Check(selected: isSel) else _MoreButton(onTap: (pos) => showNoteMenu(context, note, pos)),
-            ]),
+            ),
           ),
+          const SizedBox(height: 8),
+          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(note.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: t.textTheme.titleSmall),
+                const SizedBox(height: 1),
+                Text(sub,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: t.textTheme.bodySmall?.copyWith(color: note.damaged ? t.colorScheme.error : null)),
+              ]),
+            ),
+            if (!lib.selecting) _MoreButton(onTap: (pos) => showNoteMenu(context, note, pos)),
+          ]),
         ]),
       ),
     );
@@ -258,8 +307,7 @@ class NoteCard extends StatelessWidget {
       onAcceptWithDetails: (d) => lib.reorderBefore(d.data, note.relPath),
       builder: (ctx, cand, _) => Stack(children: [
         Positioned.fill(child: card),
-        if (cand.isNotEmpty)
-          Positioned(left: 0, top: 8, bottom: 8, child: Container(width: 4, decoration: BoxDecoration(color: t.colorScheme.primary, borderRadius: BorderRadius.circular(2)))),
+        if (cand.isNotEmpty) Positioned(left: 0, top: 10, bottom: 10, child: Container(width: 2, color: t.colorScheme.primary)),
       ]),
     );
     return _draggable(note.relPath, target, _feedback(context, layoutIcon(note.layout), note.title, t.colorScheme.primary));
@@ -272,8 +320,8 @@ class _Check extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.all(8),
-        child: Icon(selected ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
-            color: selected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.outline),
+        child: Icon(selected ? Icons.check_circle : Icons.radio_button_unchecked,
+            size: 20, color: selected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.outline),
       );
 }
 
@@ -284,25 +332,24 @@ class NoteRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context);
+    final lib = context.watch<LibraryController>();
     return _draggable(
       note.relPath,
       Card(
         child: ListTile(
           key: ValueKey('note-card-${note.relPath}'),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           leading: Icon(note.damaged ? Icons.broken_image_outlined : layoutIcon(note.layout),
-              color: note.damaged ? t.colorScheme.error : t.colorScheme.primary),
-          title: Text(note.title),
-          subtitle: Text(showFolder && note.dir.isNotEmpty ? '${formatDate(note.modified)} · ${note.dir}' : formatDate(note.modified)),
+              color: note.damaged ? t.colorScheme.error : AppTokens.of(context).muted),
+          title: Text(note.title, style: t.textTheme.titleSmall),
+          subtitle: Text(showFolder && note.dir.isNotEmpty ? '${formatDate(note.modified)} · ${note.dir}' : formatDate(note.modified),
+              style: t.textTheme.bodySmall),
           trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-            if (note.favorite) Icon(Icons.star_rounded, size: 18, color: t.colorScheme.primary),
-            _MoreButton(onTap: (pos) => showNoteMenu(context, note, pos)),
+            if (note.favorite) Icon(Icons.star, size: 16, color: t.colorScheme.primary),
+            if (lib.selecting) _Check(selected: lib.selected.contains(note.relPath)) else _MoreButton(onTap: (pos) => showNoteMenu(context, note, pos)),
           ]),
-          onTap: () {
-            final lib = context.read<LibraryController>();
-            lib.selecting ? lib.toggleSelect(note.relPath) : openNote(context, note);
-          },
-          selected: context.watch<LibraryController>().selected.contains(note.relPath),
+          onTap: () => lib.selecting ? lib.toggleSelect(note.relPath) : openNote(context, note),
+          selected: lib.selected.contains(note.relPath),
         ),
       ),
       _feedback(context, layoutIcon(note.layout), note.title, t.colorScheme.primary),
@@ -316,23 +363,26 @@ class FolderRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = Color(folder.meta.color);
+    final lib = context.watch<LibraryController>();
     return DragTarget<String>(
       onWillAcceptWithDetails: (d) => d.data != folder.relPath && !folder.relPath.startsWith('${d.data}/'),
-      onAcceptWithDetails: (d) => context.read<LibraryController>().move(d.data, folder.relPath),
+      onAcceptWithDetails: (d) => lib.move(d.data, folder.relPath),
       builder: (ctx, cand, _) => _draggable(
         folder.relPath,
         Card(
           child: ListTile(
             key: ValueKey('folder-tile-${folder.name}'),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-              side: cand.isNotEmpty ? BorderSide(color: Theme.of(context).colorScheme.primary, width: 2) : BorderSide.none,
+              borderRadius: BorderRadius.circular(10),
+              side: cand.isNotEmpty ? BorderSide(color: Theme.of(context).colorScheme.primary, width: 1.5) : BorderSide.none,
             ),
             leading: Icon(folderIcon(folder.meta.icon), color: color),
-            title: Text(folder.name),
-            subtitle: Text('${folder.itemCount} items'),
-            trailing: _MoreButton(onTap: (pos) => showFolderMenu(context, folder, pos)),
-            onTap: () => context.read<LibraryController>().openFolder(folder.relPath),
+            title: Text(folder.name, style: Theme.of(context).textTheme.titleSmall),
+            subtitle: Text('${folder.itemCount} items', style: Theme.of(context).textTheme.bodySmall),
+            trailing: lib.selecting
+                ? _Check(selected: lib.selected.contains(folder.relPath))
+                : _MoreButton(onTap: (pos) => showFolderMenu(context, folder, pos)),
+            onTap: () => lib.selecting ? lib.toggleSelect(folder.relPath) : lib.openFolder(folder.relPath),
           ),
         ),
         _feedback(context, folderIcon(folder.meta.icon), folder.name, color),

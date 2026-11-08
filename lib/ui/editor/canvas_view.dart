@@ -20,6 +20,7 @@ import 'painters.dart';
 import 'pdf_cache.dart';
 import 'ruler.dart';
 import 'text_box.dart';
+import '../theme.dart';
 
 const _pageGap = 24.0;
 
@@ -189,7 +190,7 @@ class _CanvasViewState extends State<CanvasView> {
       _scale = 1;
       _offset = const Offset(40, 40);
     } else {
-      _scale = ((_viewSize.width - 48) / _docWidth).clamp(_minScale, 1.6);
+      _scale = ((_viewSize.width - 48) / _docWidth).clamp(_minScale, 1.25);
       _offset = Offset((_viewSize.width - _docWidth * _scale) / 2, 24);
     }
     if (rebuild) setState(() {});
@@ -219,7 +220,7 @@ class _CanvasViewState extends State<CanvasView> {
     } else {
       dx = dx.clamp(_viewSize.width - w - 24, 24);
     }
-    final minY = math.min(24.0, _viewSize.height - h - 120);
+    final minY = math.min(24.0, _viewSize.height - h - 140); // room for the "Add page" button
     dy = dy.clamp(minY, 24.0);
     _offset = Offset(dx, dy);
   }
@@ -606,8 +607,9 @@ class _CanvasViewState extends State<CanvasView> {
       );
       final editingId = c.editingTextId;
       final children = <Widget>[
-        Positioned.fill(child: ColoredBox(color: dark ? const Color(0xFF101215) : const Color(0xFFE9EAEE))),
+        Positioned.fill(child: ColoredBox(color: AppTokens.of(context).desk)),
       ];
+      final chrome = <Widget>[]; // page numbers, add-page button: drawn above the input layer
       final textWidgets = <Widget>[];
       Widget? editor;
 
@@ -640,17 +642,50 @@ class _CanvasViewState extends State<CanvasView> {
           children.add(Positioned.fromRect(
             rect: r,
             child: DecoratedBox(
-              decoration: const BoxDecoration(boxShadow: [BoxShadow(color: Color(0x22000000), blurRadius: 10, offset: Offset(0, 2))]),
+              decoration: BoxDecoration(boxShadow: [
+                BoxShadow(color: Colors.black.withValues(alpha: dark ? 0.35 : 0.08), blurRadius: 2, offset: const Offset(0, 1)),
+                BoxShadow(color: Colors.black.withValues(alpha: dark ? 0.30 : 0.07), blurRadius: 18, offset: const Offset(0, 6)),
+              ]),
               child: RepaintBoundary(
                 child: CustomPaint(
                   size: r.size,
-                  painter: PagePainter(note: note, page: pg, assets: assets, scale: _scale, assetsVersion: widget.imagesVersion,
-                pdfVersion: widget.pdf.version),
+                  painter: PagePainter(
+                    note: note,
+                    page: pg,
+                    assets: assets,
+                    scale: _scale,
+                    assetsVersion: widget.imagesVersion,
+                    pdfVersion: widget.pdf.version,
+                  ),
                 ),
               ),
             ),
           ));
           _texts(pg, o[i], editingId, textWidgets, (w) => editor = w);
+          if (note.layout == NoteLayout.paged && note.pages.length > 1) {
+            chrome.add(Positioned(
+              left: r.left,
+              width: r.width,
+              top: r.bottom + 4,
+              child: IgnorePointer(
+                child: Text('${i + 1}', textAlign: TextAlign.center, style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 11)),
+              ),
+            ));
+          }
+          if (note.layout == NoteLayout.paged && i == note.pages.length - 1) {
+            chrome.add(Positioned(
+              left: r.left,
+              width: r.width,
+              top: r.bottom + 28,
+              child: Center(
+                child: OutlinedButton.icon(
+                  onPressed: () => c.addPage(),
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('Add page'),
+                ),
+              ),
+            ));
+          }
         }
       }
 
@@ -703,10 +738,39 @@ class _CanvasViewState extends State<CanvasView> {
         ),
       ));
 
+      children.addAll(chrome);
+      children.add(Positioned(right: 16, bottom: 14, child: _statusPill(context)));
       if (editor != null) children.add(editor!);
       if (c.hasSelection && c.editingTextId == null) children.add(_selectionBar(context));
       return ClipRect(child: Stack(children: children));
     });
+  }
+
+  /// "Page 2 of 5 · 110%" — where you are, and a tap to fit the page again.
+  Widget _statusPill(BuildContext context) {
+    final t = Theme.of(context);
+    final tk = AppTokens.of(context);
+    final zoom = '${(_scale * 100).round()}%';
+    final label = note.layout == NoteLayout.paged && note.pages.isNotEmpty
+        ? 'Page ${_hitPage(_viewSize.center(Offset.zero)).$1 + 1} of ${note.pages.length}  ·  $zoom'
+        : zoom;
+    return Material(
+      color: t.colorScheme.surfaceContainerLow.withValues(alpha: 0.94),
+      shape: StadiumBorder(side: BorderSide(color: tk.hairline)),
+      elevation: 2,
+      shadowColor: Colors.black26,
+      child: InkWell(
+        customBorder: const StadiumBorder(),
+        onTap: _fit,
+        child: Tooltip(
+          message: 'Fit to width (Ctrl+0)',
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            child: Text(label, style: t.textTheme.bodySmall?.copyWith(fontFeatures: const [FontFeature.tabularFigures()])),
+          ),
+        ),
+      ),
+    );
   }
 
   void _texts(NotePage pg, Offset origin, String? editingId, List<Widget> out, void Function(Widget) setEditor) {
@@ -776,31 +840,31 @@ class _CanvasViewState extends State<CanvasView> {
             if (single is TextEl)
               IconButton(
                 tooltip: 'Edit text',
-                icon: const Icon(Icons.edit_rounded, size: 20),
+                icon: const Icon(Icons.edit, size: 20),
                 onPressed: () => c.startTextEdit(c.selPageId!, single.id),
               ),
             if (single is ImageEl)
               IconButton(
                 tooltip: single.behindInk ? 'Bring in front of ink' : 'Send behind ink',
-                icon: Icon(single.behindInk ? Icons.flip_to_front_rounded : Icons.flip_to_back_rounded, size: 20),
+                icon: Icon(single.behindInk ? Icons.flip_to_front : Icons.flip_to_back, size: 20),
                 onPressed: () => c.replaceElement(c.selPageId!, single.copyWith(behindInk: !single.behindInk)),
               ),
             if (single is ImageEl)
               IconButton(
                 tooltip: 'Crop',
-                icon: const Icon(Icons.crop_rounded, size: 20),
+                icon: const Icon(Icons.crop, size: 20),
                 onPressed: () => cropImageAction?.call(context, c, single),
               ),
-            IconButton(tooltip: 'Duplicate', icon: const Icon(Icons.control_point_duplicate_rounded, size: 20), onPressed: c.duplicateSelection),
+            IconButton(tooltip: 'Duplicate', icon: const Icon(Icons.control_point_duplicate, size: 20), onPressed: c.duplicateSelection),
             if (exportSelectionAction != null)
               IconButton(
                 tooltip: 'Save as image',
                 icon: const Icon(Icons.image_outlined, size: 20),
                 onPressed: () => exportSelectionAction!(context, c.note, c.selPageId!, c.selectionRect!),
               ),
-            IconButton(tooltip: 'Copy', icon: const Icon(Icons.copy_rounded, size: 20), onPressed: c.copySelection),
-            IconButton(tooltip: 'Cut', icon: const Icon(Icons.content_cut_rounded, size: 20), onPressed: c.cutSelection),
-            IconButton(tooltip: 'Delete', icon: const Icon(Icons.delete_outline_rounded, size: 20), onPressed: c.deleteSelection),
+            IconButton(tooltip: 'Copy', icon: const Icon(Icons.copy, size: 20), onPressed: c.copySelection),
+            IconButton(tooltip: 'Cut', icon: const Icon(Icons.content_cut, size: 20), onPressed: c.cutSelection),
+            IconButton(tooltip: 'Delete', icon: const Icon(Icons.delete_outline, size: 20), onPressed: c.deleteSelection),
           ]),
         ),
       ),

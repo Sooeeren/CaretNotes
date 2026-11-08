@@ -221,6 +221,14 @@ void _template(PdfGraphics g, Template t, RectD area) {
         g.lineTo(area.right, y);
       }
       g.strokePath();
+      if (area.left <= 0 && area.top <= 0) {
+        final mx = (s * 3).clamp(48.0, 84.0); // same as the editor's notebook margin
+        g.setStrokeColor(PdfColor.fromInt(0x66E07070));
+        g.setLineWidth(0.8);
+        g.moveTo(mx, area.top);
+        g.lineTo(mx, area.bottom);
+        g.strokePath();
+      }
     case TemplateKind.grid:
       for (var y = y0; y <= area.bottom; y += s) {
         g.moveTo(area.left, y);

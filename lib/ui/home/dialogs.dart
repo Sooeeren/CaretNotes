@@ -145,7 +145,7 @@ Future<String?> pickFolder(BuildContext context, FolderNode tree, {String? exclu
         height: 420,
         child: ListView(children: [
           ListTile(
-            leading: const Icon(Icons.home_rounded),
+            leading: const Icon(Icons.home),
             title: const Text('All notes'),
             onTap: () => Navigator.pop(ctx, ''),
           ),

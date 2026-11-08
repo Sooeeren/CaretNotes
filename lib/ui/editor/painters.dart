@@ -54,6 +54,9 @@ Paint strokePaint(ToolKind tool, int color) {
 
 Template effectiveTemplate(Note n, NotePage p) => p.templateOverride ?? n.template;
 
+/// X position of the red margin line on lined paper (~2.5 cm on A4).
+double notebookMargin(double spacing) => (spacing * 3).clamp(48.0, 84.0);
+
 /// Paper color + lines/grid/dots across [area] (page-local coordinates).
 void paintTemplate(Canvas c, Template t, Rect area, {bool fillPaper = true}) {
   if (fillPaper) c.drawRect(area, Paint()..color = Color(t.paperColor));
@@ -70,6 +73,13 @@ void paintTemplate(Canvas c, Template t, Rect area, {bool fillPaper = true}) {
       for (var y = math.max(y0, area.top + 0.0); y <= area.bottom; y += s) {
         if (y < area.top + s * 2 && area.top == 0) continue; // header margin on pages
         c.drawLine(Offset(area.left, y), Offset(area.right, y), line);
+      }
+      // Notebook margin on pages (not on infinite canvases).
+      if (area.left == 0 && area.top == 0) {
+        final mx = notebookMargin(s);
+        c.drawLine(Offset(mx, 0), Offset(mx, area.bottom), Paint()
+          ..color = const Color(0x66E07070)
+          ..strokeWidth = 0.8);
       }
     case TemplateKind.grid:
       for (var y = y0; y <= area.bottom; y += s) {

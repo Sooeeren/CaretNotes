@@ -73,17 +73,19 @@ class _MainArea extends StatelessWidget {
     };
 
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Padding(
-        padding: const EdgeInsets.fromLTRB(8, 12, 16, 8),
+      Container(
+        height: 60,
+        padding: const EdgeInsets.fromLTRB(12, 0, 20, 0),
+        decoration: BoxDecoration(border: Border(bottom: BorderSide(color: Theme.of(context).dividerColor))),
         child: Row(children: [
-          IconButton(tooltip: 'Toggle sidebar', icon: const Icon(Icons.menu_rounded), onPressed: onToggleSidebar),
+          IconButton(tooltip: 'Toggle sidebar', icon: const Icon(Icons.menu), onPressed: onToggleSidebar),
           const SizedBox(width: 4),
           Expanded(
             child: title == null
                 ? Breadcrumbs(relDir: lib.currentDir, onOpen: lib.openFolder)
                 : Padding(
                     padding: const EdgeInsets.only(left: 8),
-                    child: Text(title, style: t.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600)),
+                    child: Text(title, style: t.textTheme.titleLarge),
                   ),
           ),
           SizedBox(
@@ -92,12 +94,12 @@ class _MainArea extends StatelessWidget {
               controller: search,
               decoration: InputDecoration(
                 hintText: 'Search',
-                prefixIcon: const Icon(Icons.search_rounded),
+                prefixIcon: const Icon(Icons.search, size: 18),
                 isDense: true,
                 suffixIcon: search.text.isEmpty
                     ? null
                     : IconButton(
-                        icon: const Icon(Icons.close_rounded),
+                        icon: const Icon(Icons.close),
                         onPressed: () {
                           search.clear();
                           lib.search('');
@@ -113,12 +115,12 @@ class _MainArea extends StatelessWidget {
             IconButton(
               tooltip: 'Select several',
               isSelected: lib.selecting,
-              icon: const Icon(Icons.checklist_rounded),
+              icon: const Icon(Icons.checklist),
               onPressed: () => lib.setSelecting(!lib.selecting),
             ),
           IconButton(
             tooltip: lib.grid ? 'List view' : 'Grid view',
-            icon: Icon(lib.grid ? Icons.view_list_rounded : Icons.grid_view_rounded),
+            icon: Icon(lib.grid ? Icons.view_list_outlined : Icons.grid_view),
             onPressed: lib.toggleGrid,
           ),
           const SizedBox(width: 4),
@@ -131,7 +133,7 @@ class _MainArea extends StatelessWidget {
                         await lib.emptyTrash();
                       }
                     },
-              icon: const Icon(Icons.delete_forever_rounded),
+              icon: const Icon(Icons.delete_forever_outlined),
               label: const Text('Empty'),
             )
           else
@@ -152,26 +154,36 @@ class _MainArea extends StatelessWidget {
       return _Empty(view: lib.view);
     }
     if (!lib.grid) {
-      return ListView(padding: const EdgeInsets.fromLTRB(16, 0, 16, 24), children: [
+      return ListView(padding: const EdgeInsets.fromLTRB(24, 12, 24, 24), children: [
         for (final f in folders) Padding(padding: const EdgeInsets.only(bottom: 8), child: FolderRow(folder: f)),
         for (final n in notes) Padding(padding: const EdgeInsets.only(bottom: 8), child: NoteRow(note: n, showFolder: showFolder)),
       ]);
     }
+    final t = Theme.of(context);
+    Widget label(String text) => SliverPadding(
+          padding: const EdgeInsets.fromLTRB(28, 8, 28, 10),
+          sliver: SliverToBoxAdapter(
+            child: Text(text, style: t.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600)),
+          ),
+        );
     return CustomScrollView(slivers: [
+      const SliverToBoxAdapter(child: SizedBox(height: 12)),
+      if (folders.isNotEmpty && lib.view == HomeView.folder) label('Folders'),
       if (folders.isNotEmpty)
         SliverPadding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
           sliver: SliverGrid(
             gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                maxCrossAxisExtent: 220, mainAxisExtent: 130, crossAxisSpacing: 12, mainAxisSpacing: 12),
+                maxCrossAxisExtent: 280, mainAxisExtent: 58, crossAxisSpacing: 10, mainAxisSpacing: 10),
             delegate: SliverChildBuilderDelegate((ctx, i) => FolderTile(folder: folders[i]), childCount: folders.length),
           ),
         ),
+      if (notes.isNotEmpty && lib.view == HomeView.folder) label(notes.length == 1 ? '1 note' : '${notes.length} notes'),
       SliverPadding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+        padding: const EdgeInsets.fromLTRB(22, 0, 22, 32),
         sliver: SliverGrid(
           gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-              maxCrossAxisExtent: 200, childAspectRatio: 0.72, crossAxisSpacing: 12, mainAxisSpacing: 12),
+              maxCrossAxisExtent: 190, childAspectRatio: 0.66, crossAxisSpacing: 14, mainAxisSpacing: 18),
           delegate: SliverChildBuilderDelegate((ctx, i) => NoteCard(note: notes[i], showFolder: showFolder), childCount: notes.length),
         ),
       ),
@@ -212,7 +224,7 @@ class _SelectionBar extends StatelessWidget {
                       await lib.deleteSelected();
                     }
                   },
-            icon: const Icon(Icons.delete_outline_rounded),
+            icon: const Icon(Icons.delete_outline),
             label: const Text('Delete'),
           ),
           const SizedBox(width: 8),
@@ -237,7 +249,7 @@ class _SortMenu extends StatelessWidget {
     };
     return PopupMenuButton<Object>(
       tooltip: 'Sort',
-      icon: const Icon(Icons.sort_rounded),
+      icon: const Icon(Icons.sort),
       itemBuilder: (_) => [
         for (final e in labels.entries)
           CheckedPopupMenuItem(value: e.key, checked: meta.sort == e.key, child: Text(e.value)),
@@ -282,16 +294,16 @@ class _NewButton extends StatelessWidget {
         }
       },
       itemBuilder: (_) => [
-        const PopupMenuItem(value: 'paged', child: ListTile(leading: Icon(Icons.description_rounded), title: Text('Note with pages'), subtitle: Text('A4 sheets'))),
-        const PopupMenuItem(value: 'endless', child: ListTile(leading: Icon(Icons.view_day_rounded), title: Text('Endless note'), subtitle: Text('One long page'))),
-        const PopupMenuItem(value: 'canvas', child: ListTile(leading: Icon(Icons.all_out_rounded), title: Text('Canvas'), subtitle: Text('Infinite in every direction'))),
+        const PopupMenuItem(value: 'paged', child: ListTile(leading: Icon(Icons.description_outlined), title: Text('Note with pages'), subtitle: Text('A4 sheets'))),
+        const PopupMenuItem(value: 'endless', child: ListTile(leading: Icon(Icons.view_agenda_outlined), title: Text('Endless note'), subtitle: Text('One long page'))),
+        const PopupMenuItem(value: 'canvas', child: ListTile(leading: Icon(Icons.crop_free), title: Text('Canvas'), subtitle: Text('Infinite in every direction'))),
         const PopupMenuDivider(),
-        const PopupMenuItem(value: 'folder', child: ListTile(leading: Icon(Icons.create_new_folder_rounded), title: Text('Folder'))),
+        const PopupMenuItem(value: 'folder', child: ListTile(leading: Icon(Icons.create_new_folder_outlined), title: Text('Folder'))),
         if (importPdfAction != null)
-          const PopupMenuItem(value: 'pdf', child: ListTile(leading: Icon(Icons.picture_as_pdf_rounded), title: Text('Import PDF'))),
+          const PopupMenuItem(value: 'pdf', child: ListTile(leading: Icon(Icons.picture_as_pdf_outlined), title: Text('Import PDF'))),
       ],
       child: IgnorePointer(
-        child: FilledButton.icon(onPressed: () {}, icon: const Icon(Icons.add_rounded), label: const Text('New')),
+        child: FilledButton.icon(onPressed: () {}, icon: const Icon(Icons.add), label: const Text('New')),
       ),
     );
   }
@@ -304,10 +316,10 @@ class _Empty extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = Theme.of(context);
     final (icon, text) = switch (view) {
-      HomeView.favorites => (Icons.star_outline_rounded, 'No favorites yet. Use a note\'s menu to add one.'),
-      HomeView.search => (Icons.search_off_rounded, 'Nothing found.'),
-      HomeView.recent => (Icons.schedule_rounded, 'No notes yet.'),
-      _ => (Icons.edit_note_rounded, 'This folder is empty. Tap "New" to start writing.'),
+      HomeView.favorites => (Icons.star_outline, 'No favorites yet. Use a note\'s menu to add one.'),
+      HomeView.search => (Icons.search_off, 'Nothing found.'),
+      HomeView.recent => (Icons.schedule_outlined, 'No notes yet.'),
+      _ => (Icons.edit_note_outlined, 'This folder is empty. Tap "New" to start writing.'),
     };
     return Center(
       child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -338,7 +350,7 @@ class _TrashList extends StatelessWidget {
         Card(
           margin: const EdgeInsets.only(bottom: 8),
           child: ListTile(
-            leading: Icon(e.isFolder ? Icons.folder_rounded : Icons.description_rounded),
+            leading: Icon(e.isFolder ? Icons.folder_outlined : Icons.description_outlined),
             title: Text(e.name.replaceAll('.cnote', '')),
             subtitle: Text([
               'Deleted ${formatDate(e.deletedAt)}',
@@ -349,7 +361,7 @@ class _TrashList extends StatelessWidget {
               TextButton(onPressed: () => lib.restore(e), child: const Text('Restore')),
               IconButton(
                 tooltip: 'Delete permanently',
-                icon: const Icon(Icons.delete_forever_rounded),
+                icon: const Icon(Icons.delete_forever_outlined),
                 onPressed: () async {
                   if (await confirm(context, 'Delete permanently?', 'This can\'t be undone.')) await lib.deleteForever(e);
                 },

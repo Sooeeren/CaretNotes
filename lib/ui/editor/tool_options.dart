@@ -85,9 +85,9 @@ class _PenOptionsState extends State<PenOptions> {
       const SizedBox(height: 8),
       SegmentedButton<ToolKind>(
         segments: const [
-          ButtonSegment(value: ToolKind.pen, label: Text('Pen'), icon: Icon(Icons.edit_rounded)),
+          ButtonSegment(value: ToolKind.pen, label: Text('Pen'), icon: Icon(Icons.edit)),
           ButtonSegment(value: ToolKind.fineliner, label: Text('Fine'), icon: Icon(Icons.edit_outlined)),
-          ButtonSegment(value: ToolKind.pencil, label: Text('Pencil'), icon: Icon(Icons.create_rounded)),
+          ButtonSegment(value: ToolKind.pencil, label: Text('Pencil'), icon: Icon(Icons.create)),
         ],
         selected: {c.penKind},
         showSelectedIcon: false,
@@ -182,8 +182,8 @@ class _SelectOptionsState extends State<SelectOptions> {
       const SizedBox(height: 8),
       SegmentedButton<SelectMode>(
         segments: const [
-          ButtonSegment(value: SelectMode.lasso, label: Text('Lasso'), icon: Icon(Icons.gesture_rounded)),
-          ButtonSegment(value: SelectMode.box, label: Text('Box'), icon: Icon(Icons.highlight_alt_rounded)),
+          ButtonSegment(value: SelectMode.lasso, label: Text('Lasso'), icon: Icon(Icons.gesture)),
+          ButtonSegment(value: SelectMode.box, label: Text('Box'), icon: Icon(Icons.highlight_alt)),
         ],
         selected: {c.selectMode},
         showSelectedIcon: false,

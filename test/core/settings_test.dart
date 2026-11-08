@@ -7,7 +7,7 @@ void main() {
   test('defaults match the spec', () {
     const s = AppSettings();
     expect(s.toolbarDock, ToolbarDock.top);
-    expect(s.accent, 0xFFFF8A1F);
+    expect(s.accent, AppSettings.defaultAccent);
     expect(s.theme, ThemePref.system);
     expect(s.fingerDrawing, isFalse);
     expect(s.sideButton, SideButtonAction.eraser);
@@ -29,7 +29,7 @@ void main() {
     final dir = await Directory.systemTemp.createTemp('cn_set_');
     final path = '${dir.path}/settings.json';
     await File(path).writeAsString('{oops');
-    expect((await AppSettings.load(path)).accent, 0xFFFF8A1F);
+    expect((await AppSettings.load(path)).accent, AppSettings.defaultAccent);
     await dir.delete(recursive: true);
   });
 }
