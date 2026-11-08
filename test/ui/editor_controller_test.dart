@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:caret_notes/core/geometry.dart';
+import 'package:caret_notes/core/library/library_store.dart';
 import 'package:caret_notes/core/ink/paint_order.dart';
 import 'package:caret_notes/core/model/elements.dart';
 import 'package:caret_notes/core/model/note.dart';
@@ -178,6 +181,60 @@ void main() {
       expect(c.note.layout, NoteLayout.paged);
       expect(c.note.pages.length, 2);
       expect(c.note.pages[1].elements.length, 1);
+    });
+  });
+
+  group('review fixes', () {
+    test('saving over a file that changed on disk keeps the other version in Recently deleted', () async {
+      final tmp = await Directory.systemTemp.createTemp('cn_ed_');
+      final store = LibraryStore(tmp.path);
+      final e = await store.createNote('', Note.create(title: 'N', layout: NoteLayout.paged, deviceName: 'a'));
+      final c = EditorController(note: await store.loadNote(e.relPath), relPath: e.relPath, store: store, deviceName: 'a', autosave: false);
+      await c.markLoaded();
+      // sync downloads another device's version while the note is open
+      final other = (await store.loadNote(e.relPath)).copyWith(title: 'other device');
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      await store.saveNote(e.relPath, other);
+      draw(c, const [Vec2(1, 1), Vec2(5, 5)]);
+      await c.save();
+      expect((await store.loadNote(e.relPath)).pages.first.elements.length, 1);
+      final trash = await store.listTrash();
+      expect(trash.length, 1);
+      expect(trash.single.originalPath, e.relPath);
+      await tmp.delete(recursive: true);
+    });
+
+    test('undoing a layout switch restores the layout too, so no pages are lost', () {
+      final c = make();
+      c.addPage();
+      c.addPage();
+      c.switchLayout(); // -> endless
+      c.undo(); // back to 3 pages, must also be paged again
+      expect(c.note.layout, NoteLayout.paged);
+      expect(c.note.pages.length, 3);
+      c.switchLayout();
+      c.switchLayout();
+      expect(c.note.pages.length, greaterThanOrEqualTo(1));
+      expect(c.note.layout, NoteLayout.paged);
+    });
+  });
+
+  group('palm landing before the pen', () {
+    test('touches already down are cancelled when the pen arrives', () {
+      final r = InputRouter(fingerDrawing: true);
+      expect(r.down(5, PointerDeviceKind.touch, kPrimaryButton, 0), InputRole.draw);
+      expect(r.down(1, PointerDeviceKind.stylus, kPrimaryButton, 50), InputRole.draw);
+      expect(r.takeCancelledTouches(), {5});
+      expect(r.isCancelled(5), isTrue);
+      r.up(5, 60);
+      expect(r.isCancelled(5), isFalse);
+    });
+
+    test('hovering pen also cancels touches', () {
+      final r = InputRouter(fingerDrawing: false);
+      r.down(7, PointerDeviceKind.touch, kPrimaryButton, 0);
+      r.hover(PointerDeviceKind.stylus, 10);
+      expect(r.takeCancelledTouches(), {7});
     });
   });
 }

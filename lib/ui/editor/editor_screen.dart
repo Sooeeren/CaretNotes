@@ -76,13 +76,15 @@ class _EditorScreenState extends State<EditorScreen> {
   Future<void> _load() async {
     final store = context.read<LibraryStore>();
     final settings = context.read<SettingsController>().value;
+    // Tell sync first, so it leaves this note alone from the moment it starts loading.
+    onNoteOpened?.call(widget.relPath);
     try {
       final note = await store.loadNote(widget.relPath);
       final c = EditorController(note: note, relPath: widget.relPath, store: store, deviceName: settings.deviceName);
       _pdf = PdfPageCache(() => c.note.assets);
       c.thumbnailer = _thumbnail;
       c.addListener(_onNoteChanged);
-      onNoteOpened?.call(widget.relPath);
+      await c.markLoaded();
       await decodeImages(note, into: _images);
       if (!mounted) return;
       setState(() => _c = c);

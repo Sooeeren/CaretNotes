@@ -1,9 +1,12 @@
 import 'dart:async';
+import 'dart:io';
+import 'dart:isolate';
 import 'dart:math' as math;
 
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 
+import '../../core/format/note_codec.dart';
 import '../../core/geometry.dart';
 import '../../core/ids.dart';
 import '../../core/ink/eraser.dart';
@@ -47,7 +50,8 @@ class LiveInk extends ChangeNotifier {
 
 class _Op {
   final List<NotePage> before, after;
-  const _Op(this.before, this.after);
+  final NoteLayout layoutBefore, layoutAfter;
+  const _Op(this.before, this.after, this.layoutBefore, this.layoutAfter);
 }
 
 class EditorController extends ChangeNotifier {
@@ -91,6 +95,20 @@ class EditorController extends ChangeNotifier {
 
   bool dirty = false;
   Timer? _saveTimer;
+  String? _diskStamp;
+
+  Future<String?> _stamp() async {
+    final s = store;
+    if (s == null) return null;
+    final f = File(s.abs(relPath));
+    if (!await f.exists()) return null;
+    final st = await f.stat();
+    return '${st.modified.microsecondsSinceEpoch}:${st.size}';
+  }
+
+  /// Remembers the file's state on disk right after loading, so saving can tell
+  /// whether something else (sync) replaced the file meanwhile.
+  Future<void> markLoaded() async => _diskStamp = await _stamp();
   Future<void>? _saving;
 
   void setTool(EditorTool t) {
@@ -122,10 +140,10 @@ class EditorController extends ChangeNotifier {
   }
 
   /// Applies a change as one undo step.
-  void commit(List<NotePage> newPages) {
+  void commit(List<NotePage> newPages, {NoteLayout? layoutBefore}) {
     final before = _note.pages;
     _setPages(newPages);
-    _undo.add(_Op(before, newPages));
+    _undo.add(_Op(before, newPages, layoutBefore ?? _note.layout, _note.layout));
     _redo.clear();
     _markDirty();
     notifyListeners();
@@ -144,7 +162,7 @@ class EditorController extends ChangeNotifier {
     final before = _gestureBefore;
     _gestureBefore = null;
     if (before == null || identical(before, _note.pages)) return;
-    _undo.add(_Op(before, _note.pages));
+    _undo.add(_Op(before, _note.pages, _note.layout, _note.layout));
     _redo.clear();
     _markDirty();
     notifyListeners();
@@ -154,6 +172,7 @@ class EditorController extends ChangeNotifier {
     if (_undo.isEmpty) return;
     final op = _undo.removeLast();
     _redo.add(op);
+    _note = _note.copyWith(layout: op.layoutBefore);
     _setPages(op.before);
     clearSelection(notify: false);
     _markDirty();
@@ -164,6 +183,7 @@ class EditorController extends ChangeNotifier {
     if (_redo.isEmpty) return;
     final op = _redo.removeLast();
     _undo.add(op);
+    _note = _note.copyWith(layout: op.layoutAfter);
     _setPages(op.after);
     clearSelection(notify: false);
     _markDirty();
@@ -615,7 +635,7 @@ class EditorController extends ChangeNotifier {
       }
       final first = _note.pages.first;
       _note = _note.copyWith(layout: NoteLayout.endless);
-      commit([NotePage(id: first.id, width: first.width, height: math.max(y, _note.pageHeight), templateOverride: first.templateOverride, elements: els)]);
+      commit(layoutBefore: NoteLayout.paged, [NotePage(id: first.id, width: first.width, height: math.max(y, _note.pageHeight), templateOverride: first.templateOverride, elements: els)]);
     } else {
       final pg = _note.pages.first;
       final h = _note.pageHeight;
@@ -626,7 +646,7 @@ class EditorController extends ChangeNotifier {
         buckets[i].add(e.transformed(Affine.translate(0, -i * h)));
       }
       _note = _note.copyWith(layout: NoteLayout.paged);
-      commit([
+      commit(layoutBefore: NoteLayout.endless, [
         for (var i = 0; i < n; i++)
           NotePage(id: i == 0 ? pg.id : newId(), width: pg.width, height: h, templateOverride: pg.templateOverride, elements: buckets[i]),
       ]);
@@ -656,7 +676,15 @@ class EditorController extends ChangeNotifier {
       try {
         thumb = await thumbnailer?.call(n);
       } catch (_) {}
-      await s.saveNote(relPath, n, thumb: thumb);
+      final now = await _stamp();
+      if (_diskStamp != null && now != null && now != _diskStamp) {
+        // The file was replaced while the note was open: keep that version, don't overwrite it.
+        await s.trashItem(relPath, reason: 'Changed elsewhere while this note was open');
+      }
+      // Zipping (JSON + deflate + CRC of all assets) runs off the UI thread so writing never stutters.
+      final bytes = await Isolate.run(() => encodeNote(n, thumb: thumb));
+      await s.writeBytesAtomic(relPath, bytes);
+      _diskStamp = await _stamp();
     } catch (e) {
       dirty = true;
       rethrow;

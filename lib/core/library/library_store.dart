@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:path/path.dart' as p;
 
+import '../atomic_file.dart';
 import '../format/note_codec.dart';
 import '../ids.dart';
 import '../model/folder_meta.dart';
@@ -459,7 +460,7 @@ class LibraryStore {
     final tmp = File('${p.join(p.dirname(absPath), '.${p.basename(absPath)}')}.${newId().substring(0, 8)}.tmp');
     await tmp.writeAsBytes(bytes, flush: true);
     try {
-      await tmp.rename(absPath);
+      await replaceFile(tmp, absPath);
     } on FileSystemException {
       // Windows: rename can fail when the target is locked; fall back to copy.
       await tmp.copy(absPath);

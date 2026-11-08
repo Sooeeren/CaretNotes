@@ -255,9 +255,35 @@ class _CanvasViewState extends State<CanvasView> {
         EditorTool.text => _Action.text,
       };
 
+  /// Drops gestures/strokes of touches cancelled because the pen showed up (resting palm).
+  void _dropCancelledTouches() {
+    for (final id in _router.takeCancelledTouches()) {
+      if (_touches.remove(id) != null) {
+        _touchStart.remove(id);
+        _startNav();
+      }
+      final ptr = _ptrs.remove(id);
+      if (ptr == null) continue;
+      switch (ptr.action) {
+        case _Action.stroke:
+          c.cancelStroke();
+        case _Action.erase:
+          c.endErase();
+        case _Action.select:
+          c.live.clear();
+        case _Action.transform:
+          c.endTransform();
+        case _Action.text:
+        case _Action.pan:
+          break;
+      }
+    }
+  }
+
   void _onDown(PointerDownEvent e) {
     final ms = e.timeStamp.inMilliseconds;
     final role = _router.down(e.pointer, e.kind, e.buttons, ms);
+    _dropCancelledTouches();
     if (role == InputRole.ignore) return;
     if (role == InputRole.navigate) {
       _touches[e.pointer] = e.localPosition;
@@ -342,6 +368,7 @@ class _CanvasViewState extends State<CanvasView> {
   void _onMove(PointerMoveEvent e) {
     final ms = e.timeStamp.inMilliseconds;
     _router.move(e.pointer, e.kind, ms);
+    if (_router.isCancelled(e.pointer)) return;
     if (_touches.containsKey(e.pointer)) {
       _touches[e.pointer] = e.localPosition;
       _updateNav();
@@ -596,6 +623,7 @@ class _CanvasViewState extends State<CanvasView> {
                 assets: assets,
                 scale: _scale,
                 assetsVersion: widget.imagesVersion,
+                pdfVersion: widget.pdf.version,
                 area: Rect.fromPoints(tl, br),
               ),
             ),
@@ -616,7 +644,8 @@ class _CanvasViewState extends State<CanvasView> {
               child: RepaintBoundary(
                 child: CustomPaint(
                   size: r.size,
-                  painter: PagePainter(note: note, page: pg, assets: assets, scale: _scale, assetsVersion: widget.imagesVersion),
+                  painter: PagePainter(note: note, page: pg, assets: assets, scale: _scale, assetsVersion: widget.imagesVersion,
+                pdfVersion: widget.pdf.version),
                 ),
               ),
             ),
@@ -649,6 +678,7 @@ class _CanvasViewState extends State<CanvasView> {
           onPointerCancel: (e) => _onUp(e, cancel: true),
           onPointerHover: (e) {
             _router.hover(e.kind, e.timeStamp.inMilliseconds);
+            _dropCancelledTouches();
             if (c.tool == EditorTool.eraser || e.kind == PointerDeviceKind.invertedStylus) {
               setState(() => _hover = e.localPosition);
             } else if (_hover != null) {

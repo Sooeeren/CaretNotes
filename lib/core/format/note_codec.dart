@@ -83,7 +83,8 @@ Uint8List? readThumb(Uint8List bytes) {
 /// Reads only note.json metadata (title, modified, favorite, id) without assets.
 Map<String, dynamic>? readNoteMeta(Uint8List bytes) {
   try {
-    final f = _open(bytes).findFile('note.json');
+    // No CRC check of every asset here: listing the library must stay fast.
+    final f = ZipDecoder().decodeBytes(bytes).findFile('note.json');
     if (f == null) return null;
     return jsonDecode(utf8.decode(f.content)) as Map<String, dynamic>;
   } catch (_) {

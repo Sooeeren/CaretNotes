@@ -234,6 +234,7 @@ class PagePainter extends CustomPainter {
   final RenderAssets assets;
   final double scale;
   final int assetsVersion;
+  final int pdfVersion;
   final Set<String> hidden;
 
   /// For canvas notes: page-coordinate rect currently visible.
@@ -245,6 +246,7 @@ class PagePainter extends CustomPainter {
     required this.assets,
     required this.scale,
     required this.assetsVersion,
+    this.pdfVersion = 0,
     this.hidden = const {},
     this.area,
   });
@@ -268,6 +270,7 @@ class PagePainter extends CustomPainter {
       !identical(old.page, page) ||
       old.scale != scale ||
       old.assetsVersion != assetsVersion ||
+      old.pdfVersion != pdfVersion ||
       old.area != area ||
       !identical(old.note.template, note.template) ||
       old.hidden.length != hidden.length;

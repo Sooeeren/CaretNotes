@@ -61,10 +61,18 @@ class SyncController extends ChangeNotifier {
     final k = _configKey(settings.value);
     if (k == _key) return;
     _key = k;
+    // Stop a run against the old provider before forgetting its history.
+    _engine?.cancel();
     _engine = null;
     status = enabled ? SyncStatus.idle : SyncStatus.disabled;
     notifyListeners();
-    _switchedProvider().then((_) => syncNow());
+    () async {
+      try {
+        await _running;
+      } catch (_) {}
+      await _switchedProvider();
+      await syncNow();
+    }();
   }
 
   /// Switching provider starts fresh: the library is uploaded to the new place
@@ -155,7 +163,8 @@ class SyncController extends ChangeNotifier {
         status = SyncStatus.disabled;
         return;
       }
-      final r = await e.run(exclude: {if (openNote != null) openNote!});
+      final r = await e.run(isOpen: (path) => path == openNote);
+      if (e.cancelled) return;
       conflicts = e.pendingConflicts;
       lastSync = DateTime.now();
       lastError = null;

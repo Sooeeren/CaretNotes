@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:isolate';
 import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
@@ -77,6 +78,12 @@ class SyncEngine {
 
   List<PendingConflict> get pendingConflicts => List.unmodifiable(_conflicts);
 
+  bool _cancelled = false;
+
+  /// Stops this engine: a run in progress makes no further changes and saves no state.
+  void cancel() => _cancelled = true;
+  bool get cancelled => _cancelled;
+
   Future<void> load() async {
     if (_loaded) return;
     _loaded = true;
@@ -91,6 +98,7 @@ class SyncEngine {
   }
 
   Future<void> _save() async {
+    if (_cancelled) return;
     await Directory(_syncDir).create(recursive: true);
     final tmp = File('$_statePath.tmp');
     await tmp.writeAsString(jsonEncode({
@@ -125,7 +133,8 @@ class SyncEngine {
       if (prev != null && prev.mtime == mt && prev.size == st.size) {
         out[rel] = _Local(prev.hash, mt, st.size);
       } else {
-        out[rel] = _Local(hashBytes(await e.readAsBytes()), mt, st.size);
+        final path = e.path;
+        out[rel] = _Local(await Isolate.run(() => hashBytes(File(path).readAsBytesSync())), mt, st.size);
       }
     }
     return out;
@@ -165,8 +174,12 @@ class SyncEngine {
     return isValidNoteFile(bytes);
   }
 
-  Future<SyncReport> run({Set<String> exclude = const {}}) async {
+  /// [isOpen] is asked per file, right before touching it, so a note opened in the editor
+  /// while sync runs is left alone.
+  Future<SyncReport> run({Set<String> exclude = const {}, bool Function(String path)? isOpen}) async {
+    bool skip(String path) => exclude.contains(path) || (isOpen?.call(path) ?? false);
     await load();
+    if (_cancelled) return SyncReport();
     final report = SyncReport();
     final local = await _scanLocal();
     final listing = await remote.listAll();
@@ -177,7 +190,7 @@ class SyncEngine {
     for (final e in listing) {
       if (!isSyncablePath(e.path)) continue;
       final orig = conflictOriginal(e.path);
-      if (orig != null && (names.contains(orig) || local.containsKey(orig))) {
+      if (orig != null && (names.contains(orig) || local.containsKey(orig)) && await _sameNote(e.path, orig, local.containsKey(orig))) {
         copies[e.path] = (orig, e);
       } else {
         remoteFiles[e.path] = e;
@@ -203,9 +216,10 @@ class SyncEngine {
     final all = {...local.keys, ...remoteFiles.keys, ..._files.keys}.toList()
       ..sort((a, b) => (a.endsWith(FolderMeta.fileName) ? 1 : 0).compareTo(b.endsWith(FolderMeta.fileName) ? 1 : 0));
     for (final path in all) {
-      if (exclude.contains(path) || blocked.contains(path)) continue;
+      if (_cancelled) return report;
+      if (skip(path) || blocked.contains(path)) continue;
       try {
-        await _syncOne(path, local[path], remoteFiles[path], report);
+        await _syncOne(path, local[path], remoteFiles[path], report, () => skip(path) || _cancelled);
       } on RemoteException {
         rethrow;
       } catch (e) {
@@ -215,7 +229,8 @@ class SyncEngine {
 
     for (final e in copies.entries) {
       final (orig, entry) = e.value;
-      if (blocked.contains(e.key) || exclude.contains(orig)) continue;
+      if (_cancelled) return report;
+      if (blocked.contains(e.key) || skip(orig)) continue;
       if (!await File(lib.abs(orig)).exists()) continue;
       final bytes = await remote.read(e.key);
       if (!_validRemote(e.key, bytes)) {
@@ -236,7 +251,20 @@ class SyncEngine {
     return report;
   }
 
-  Future<void> _syncOne(String path, _Local? l, RemoteEntry? r, SyncReport report) async {
+  /// True when [copyPath] holds the same note (same note id) as [orig]. Folder settings
+  /// files have no id; a "conflict" copy of one is trusted by name.
+  Future<bool> _sameNote(String copyPath, String orig, bool origIsLocal) async {
+    if (!copyPath.endsWith(noteExtension)) return true;
+    try {
+      final theirs = readNoteMeta(await remote.read(copyPath))?['id'];
+      final ours = readNoteMeta(origIsLocal ? await File(lib.abs(orig)).readAsBytes() : await remote.read(orig))?['id'];
+      return theirs != null && theirs == ours;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> _syncOne(String path, _Local? l, RemoteEntry? r, SyncReport report, bool Function() handsOff) async {
     final s = _files[path];
     final isMeta = path.endsWith(FolderMeta.fileName);
 
@@ -249,6 +277,7 @@ class SyncEngine {
 
     Future<bool> download() async {
       final bytes = await remote.read(path);
+      if (handsOff()) return false; // opened in the editor meanwhile
       if (!_validRemote(path, bytes)) {
         report.skipped.add(path);
         return false;
@@ -260,6 +289,7 @@ class SyncEngine {
     }
 
     Future<void> deleteLocal() async {
+      if (handsOff()) return;
       if (isMeta) {
         if (await _folderHasNotes(dirOfRel(path))) return upload(); // folder restored with its settings
         final f = File(lib.abs(path));

@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:path/path.dart' as p;
 
+import '../atomic_file.dart';
 import '../ids.dart';
 import 'remote_store.dart';
 
@@ -74,9 +75,10 @@ class FolderRemote implements RemoteStore {
     await target.parent.create(recursive: true);
     final tmp = File(p.join(target.parent.path, '.~cn-${newId().substring(0, 8)}.tmp'));
     await tmp.writeAsBytes(data, flush: true);
+    // Rename replaces the target atomically; never delete first (a sync client could
+    // propagate the delete, and a failure after it would lose the note).
     try {
-      if (await target.exists()) await target.delete();
-      await tmp.rename(target.path);
+      await replaceFile(tmp, target.path);
     } on FileSystemException {
       await tmp.copy(target.path);
       await tmp.delete();

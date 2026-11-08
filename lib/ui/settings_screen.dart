@@ -280,17 +280,28 @@ class _SyncSettingsState extends State<_SyncSettings> {
             TextField(
               controller: _url,
               decoration: const InputDecoration(labelText: 'Address, e.g. https://cloud.example.org/remote.php/dav/files/me/CaretNotes'),
-              onChanged: (v) => _setConfig({'url': v.trim()}),
             ),
             const SizedBox(height: 8),
-            TextField(controller: _user, decoration: const InputDecoration(labelText: 'User name'), onChanged: (v) => _setConfig({'user': v.trim()})),
+            TextField(controller: _user, decoration: const InputDecoration(labelText: 'User name')),
             const SizedBox(height: 8),
             TextField(
               controller: _pw,
               obscureText: true,
               decoration: const InputDecoration(labelText: 'Password or app password (stored encrypted)'),
-              onSubmitted: (v) => sync.setWebDavPassword(v),
-              onChanged: (v) => sync.setWebDavPassword(v),
+            ),
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerRight,
+              child: FilledButton.icon(
+                icon: const Icon(Icons.link_rounded),
+                label: const Text('Connect'),
+                onPressed: () async {
+                  // Applied only here (not per keystroke), so half-typed addresses never get synced to.
+                  if (_pw.text.isNotEmpty) await sync.setWebDavPassword(_pw.text);
+                  await _setConfig({'url': _url.text.trim(), 'user': _user.text.trim()});
+                  await sync.syncNow();
+                },
+              ),
             ),
           ]),
         ),

@@ -224,4 +224,59 @@ void main() {
       expect(listed, contains(p));
     });
   });
+
+  group('review fixes', () {
+    test('a note that becomes open during a run is not overwritten (live open check)', () async {
+      final p = await newNote('', 'Opened');
+      await engine.run();
+      final rn = await remoteNote(remote, p);
+      await remote.write(p, encodeNote(rn.copyWith(title: 'remote edit')));
+      // the editor opens the note while sync is running: checked per file, not once at start
+      var open = false;
+      final r = await engine.run(isOpen: (path) {
+        final v = open;
+        open = true;
+        return v || path == p;
+      });
+      expect(r.downloaded, isNot(contains(p)));
+      expect((await lib.loadNote(p)).title, 'Opened');
+    });
+
+    test('a cancelled run does not save its state', () async {
+      final p = await newNote('', 'X');
+      engine.cancel();
+      await engine.run();
+      final fresh = SyncEngine(lib, remote);
+      final r = await fresh.run();
+      expect(r.uploaded, contains(p), reason: 'state of the cancelled run must not have been persisted');
+    });
+
+    test('a user note titled "(conflict theory)" is not mistaken for a conflict copy', () async {
+      final p = await newNote('', 'Lecture 5');
+      await engine.run();
+      final other = Note.create(title: 'Lecture 5 (conflict theory)', layout: NoteLayout.paged, deviceName: 'tablet');
+      await remote.write('Lecture 5 (conflict theory).cnote', encodeNote(other));
+      final r = await engine.run();
+      expect(r.conflicts, isEmpty);
+      expect(r.downloaded, contains('Lecture 5 (conflict theory).cnote'));
+      expect(await File(lib.abs(p)).exists(), isTrue);
+    });
+
+    test('FolderRemote overwrites in place without deleting the file first', () async {
+      final dir = Directory('${tmp.path}/proton2');
+      final fr = FolderRemote(dir.path);
+      await fr.write('a.cnote', Uint8List.fromList([1, 2, 3]));
+      final f = File('${dir.path}/a.cnote');
+      var sawMissing = false;
+      final sub = Stream.periodic(const Duration(microseconds: 50)).listen((_) {
+        if (!f.existsSync()) sawMissing = true;
+      });
+      for (var i = 0; i < 20; i++) {
+        await fr.write('a.cnote', Uint8List.fromList(List.filled(200000, i)));
+      }
+      await sub.cancel();
+      expect(sawMissing, isFalse);
+      expect((await f.readAsBytes()).length, 200000);
+    });
+  });
 }
