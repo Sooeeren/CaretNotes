@@ -1,5 +1,5 @@
 name: caret_notes
-description: "A new Flutter project."
+description: "Handwriting-first notes app for pen and touch: ink, typed text on the lines, PDFs and sync."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -40,9 +40,9 @@ dependencies:
   path: ^1.9.1
   path_provider: ^2.1.5
   file_selector: ^1.0.4
-  pdfrx: ^2.1.5
+  pdfrx: 2.12.0
   pdf: ^3.11.3
-  image: ^4.5.4
+  image: ">=4.8.0 <4.11.0"
   googleapis: ^15.0.0
   googleapis_auth: ^2.0.0
   http: ^1.6.0

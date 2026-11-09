@@ -195,3 +195,38 @@ class _SelectOptionsState extends State<SelectOptions> {
     ]);
   }
 }
+
+class TextOptions extends StatefulWidget {
+  final EditorController c;
+  const TextOptions({super.key, required this.c});
+  @override
+  State<TextOptions> createState() => _TextOptionsState();
+}
+
+class _TextOptionsState extends State<TextOptions> {
+  @override
+  Widget build(BuildContext context) {
+    final c = widget.c;
+    final t = Theme.of(context);
+    return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text('Text', style: t.textTheme.titleSmall),
+      const SizedBox(height: 8),
+      SegmentedButton<TextMode>(
+        segments: const [
+          ButtonSegment(value: TextMode.lines, label: Text('On lines'), icon: Icon(Icons.notes)),
+          ButtonSegment(value: TextMode.box, label: Text('Text box'), icon: Icon(Icons.text_fields)),
+        ],
+        selected: {c.textMode},
+        showSelectedIcon: false,
+        onSelectionChanged: (s) => setState(() => c.update(() => c.textMode = s.first)),
+      ),
+      const SizedBox(height: 8),
+      Text(
+        c.textMode == TextMode.lines
+            ? 'Click a line and type. Text follows the paper\'s lines like in a notebook. Markdown works.'
+            : 'Click anywhere for a free text box you can move and resize. Markdown, tables and math work.',
+        style: t.textTheme.bodySmall,
+      ),
+    ]);
+  }
+}

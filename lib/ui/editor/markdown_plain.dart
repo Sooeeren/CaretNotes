@@ -3,7 +3,8 @@ import 'package:flutter/painting.dart';
 /// Approximate rendering of Markdown as styled text, for thumbnails, image export
 /// and as a fallback. Headings get bigger, **bold** / *italic* / `code` are styled,
 /// list and quote markers are kept readable, syntax characters are hidden.
-TextSpan markdownToPlainSpan(String md, double fontSize, Color color) {
+/// [maxHeading] caps heading sizes (text on lines must fit one line).
+TextSpan markdownToPlainSpan(String md, double fontSize, Color color, {double? maxHeading}) {
   final base = TextStyle(fontSize: fontSize, color: color, height: 1.35, fontFamily: 'Segoe UI');
   final children = <InlineSpan>[];
   final lines = md.split('\n');
@@ -23,7 +24,8 @@ TextSpan markdownToPlainSpan(String md, double fontSize, Color color) {
     final h = RegExp(r'^(#{1,6})\s+').firstMatch(line);
     if (h != null) {
       final level = h.group(1)!.length;
-      style = base.copyWith(fontSize: fontSize * (level == 1 ? 1.7 : level == 2 ? 1.4 : 1.2), fontWeight: FontWeight.w700);
+      final size = fontSize * (level == 1 ? 1.7 : level == 2 ? 1.4 : 1.2);
+      style = base.copyWith(fontSize: maxHeading != null && size > maxHeading ? maxHeading : size, fontWeight: FontWeight.w700);
       line = line.substring(h.end);
     }
     line = line

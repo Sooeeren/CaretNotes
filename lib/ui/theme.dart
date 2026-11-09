@@ -141,13 +141,13 @@ ThemeData buildTheme(Color accent, Brightness brightness) {
     tooltipTheme: TooltipThemeData(
       waitDuration: const Duration(milliseconds: 500),
       decoration: BoxDecoration(color: dark ? const Color(0xFFE8E6E3) : const Color(0xFF2A2B2F), borderRadius: BorderRadius.circular(6)),
-      textStyle: TextStyle(color: dark ? const Color(0xFF1A1B1E) : Colors.white, fontSize: 12),
+      textStyle: TextStyle(fontFamily: 'Segoe UI Variable Text', color: dark ? const Color(0xFF1A1B1E) : Colors.white, fontSize: 12),
     ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+        textStyle: const TextStyle(fontFamily: 'Segoe UI Variable Text', fontWeight: FontWeight.w600, fontSize: 13),
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(

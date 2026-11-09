@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../core/library/library_store.dart';
 import '../controllers.dart';
 import '../folder_style.dart';
+import '../menu.dart';
 import '../theme.dart';
 import 'dialogs.dart';
 import 'sidebar.dart';
@@ -39,13 +40,13 @@ Future<void> showNoteMenu(BuildContext context, NoteEntry e, Offset pos) async {
     context: context,
     position: RelativeRect.fromLTRB(pos.dx, pos.dy, pos.dx, pos.dy),
     items: [
-      const PopupMenuItem(value: 'open', child: Text('Open')),
-      const PopupMenuItem(value: 'rename', child: Text('Rename')),
-      PopupMenuItem(value: 'fav', child: Text(e.favorite ? 'Remove from favorites' : 'Add to favorites')),
-      const PopupMenuItem(value: 'move', child: Text('Move to…')),
-      const PopupMenuItem(value: 'dup', child: Text('Duplicate')),
-      if (exportNoteAction != null) const PopupMenuItem(value: 'export', child: Text('Export…')),
-      const PopupMenuItem(value: 'delete', child: Text('Delete')),
+      iconMenuItem('open', Icons.open_in_new, 'Open'),
+      iconMenuItem('rename', Icons.drive_file_rename_outline, 'Rename'),
+      iconMenuItem('fav', e.favorite ? Icons.star : Icons.star_outline, e.favorite ? 'Remove from favorites' : 'Add to favorites'),
+      iconMenuItem('move', Icons.drive_file_move_outline, 'Move to…'),
+      iconMenuItem('dup', Icons.content_copy_outlined, 'Duplicate'),
+      if (exportNoteAction != null) iconMenuItem('export', Icons.ios_share_outlined, 'Export…'),
+      iconMenuItem('delete', Icons.delete_outline, 'Delete'),
     ],
   );
   if (!context.mounted || v == null) return;
@@ -81,11 +82,11 @@ Future<void> showFolderMenu(BuildContext context, FolderEntry f, Offset pos) asy
   final v = await showMenu<String>(
     context: context,
     position: RelativeRect.fromLTRB(pos.dx, pos.dy, pos.dx, pos.dy),
-    items: const [
-      PopupMenuItem(value: 'open', child: Text('Open')),
-      PopupMenuItem(value: 'edit', child: Text('Rename, color & icon')),
-      PopupMenuItem(value: 'move', child: Text('Move to…')),
-      PopupMenuItem(value: 'delete', child: Text('Delete')),
+    items: [
+      iconMenuItem('open', Icons.folder_open_outlined, 'Open'),
+      iconMenuItem('edit', Icons.palette_outlined, 'Rename, color & icon'),
+      iconMenuItem('move', Icons.drive_file_move_outline, 'Move to…'),
+      iconMenuItem('delete', Icons.delete_outline, 'Delete'),
     ],
   );
   if (!context.mounted || v == null) return;

@@ -108,7 +108,12 @@ class EditorToolbar extends StatelessWidget {
         selected: c.rulerVisible,
         onTap: () => c.update(() => c.rulerVisible = !c.rulerVisible),
       ),
-      tool(EditorTool.text, Icons.title, 'Text (Markdown)'),
+      tool(
+        EditorTool.text,
+        c.textMode == TextMode.lines ? Icons.notes : Icons.text_fields,
+        c.textMode == TextMode.lines ? 'Type on lines (tap again for text box)' : 'Text box (tap again for typing on lines)',
+        options: () => TextOptions(c: c),
+      ),
       _ToolButton(icon: Icons.add_photo_alternate_outlined, tooltip: 'Insert image', selected: false, onTap: onInsertImage),
       if (!compact || !horizontal) ..._quickColors(horizontal),
     ];

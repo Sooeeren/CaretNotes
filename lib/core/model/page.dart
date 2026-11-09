@@ -1,7 +1,8 @@
 import '../ids.dart';
 import 'elements.dart';
 
-enum TemplateKind { blank, lined, grid, dots }
+/// Paper kinds. Cornell and staff were added in format 2.
+enum TemplateKind { blank, lined, grid, dots, cornell, staff }
 
 class Template {
   final TemplateKind kind;
@@ -30,7 +31,7 @@ class Template {
 
   Map<String, dynamic> toJson() => {'kind': kind.name, 'spacing': spacing, 'paper': paperColor, 'line': lineColor};
   factory Template.fromJson(Map<String, dynamic> j) => Template(
-        kind: TemplateKind.values.byName(j['kind'] as String),
+        kind: TemplateKind.values.asNameMap()[j['kind']] ?? TemplateKind.lined,
         spacing: (j['spacing'] as num).toDouble(),
         paperColor: j['paper'] as int,
         lineColor: j['line'] as int,

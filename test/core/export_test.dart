@@ -54,6 +54,15 @@ void main() {
     expect(txt.contains('Eigenwerte') || txt.contains('/Font'), isTrue);
   });
 
+  test('text on lines and the new paper kinds export', () async {
+    final n = Note.create(title: 'x', layout: NoteLayout.paged, deviceName: 'd');
+    const t = TextEl(id: 't', rect: RectD(72, 88, 573, 154), markdown: '# Title\nfirst line\n```\ncode\n```', fontSize: 13.2, lineHeight: 22);
+    for (final kind in [TemplateKind.cornell, TemplateKind.staff, TemplateKind.lined]) {
+      final note = n.copyWith(template: Template(kind: kind), pages: [n.pages.first.copyWith(elements: [t])]);
+      expect(pageCount(await exportNotePdf(note)), 1);
+    }
+  });
+
   test('imported PDF pages are stamped (original page kept, ink on top) via PDFium', () async {
     const dll = 'build/windows/x64/runner/Debug/pdfium.dll';
     final stamper = File(dll).existsSync() ? PdfiumStamper.tryLoad(File(dll).absolute.path) : null;

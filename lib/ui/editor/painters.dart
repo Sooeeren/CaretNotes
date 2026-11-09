@@ -10,7 +10,9 @@ import '../../core/ink/stroke_geometry.dart';
 import '../../core/model/elements.dart';
 import '../../core/model/note.dart';
 import '../../core/model/page.dart';
+import '../../core/paper.dart';
 import 'markdown_plain.dart';
+import 'text_box.dart';
 
 /// Decoded images and rendered PDF pages needed to paint a note.
 class RenderAssets {
@@ -54,49 +56,28 @@ Paint strokePaint(ToolKind tool, int color) {
 
 Template effectiveTemplate(Note n, NotePage p) => p.templateOverride ?? n.template;
 
-/// X position of the red margin line on lined paper (~2.5 cm on A4).
-double notebookMargin(double spacing) => (spacing * 3).clamp(48.0, 84.0);
-
-/// Paper color + lines/grid/dots across [area] (page-local coordinates).
-void paintTemplate(Canvas c, Template t, Rect area, {bool fillPaper = true}) {
+/// Paper color + the template's lines/dots across [area] (page-local coordinates).
+/// [page] is the whole page; leave it null on an infinite canvas. [lineScale]
+/// thickens lines and dots (small previews).
+void paintTemplate(Canvas c, Template t, Rect area, {Rect? page, bool fillPaper = true, double lineScale = 1}) {
   if (fillPaper) c.drawRect(area, Paint()..color = Color(t.paperColor));
-  if (t.kind == TemplateKind.blank) return;
-  final s = t.spacing;
-  if (s < 4) return;
-  final line = Paint()
-    ..color = Color(t.lineColor)
-    ..strokeWidth = 0.6
-    ..isAntiAlias = true;
-  final x0 = (area.left / s).floor() * s, y0 = (area.top / s).floor() * s;
-  switch (t.kind) {
-    case TemplateKind.lined:
-      for (var y = math.max(y0, area.top + 0.0); y <= area.bottom; y += s) {
-        if (y < area.top + s * 2 && area.top == 0) continue; // header margin on pages
-        c.drawLine(Offset(area.left, y), Offset(area.right, y), line);
-      }
-      // Notebook margin on pages (not on infinite canvases).
-      if (area.left == 0 && area.top == 0) {
-        final mx = notebookMargin(s);
-        c.drawLine(Offset(mx, 0), Offset(mx, area.bottom), Paint()
-          ..color = const Color(0x66E07070)
-          ..strokeWidth = 0.8);
-      }
-    case TemplateKind.grid:
-      for (var y = y0; y <= area.bottom; y += s) {
-        c.drawLine(Offset(area.left, y), Offset(area.right, y), line);
-      }
-      for (var x = x0; x <= area.right; x += s) {
-        c.drawLine(Offset(x, area.top), Offset(x, area.bottom), line);
-      }
-    case TemplateKind.dots:
-      final dot = Paint()..color = Color(t.lineColor).withValues(alpha: 1);
-      for (var y = y0; y <= area.bottom; y += s) {
-        for (var x = x0; x <= area.right; x += s) {
-          c.drawCircle(Offset(x, y), 0.9, dot);
-        }
-      }
-    case TemplateKind.blank:
-      break;
+  final g = paperGeometry(
+    t,
+    RectD(area.left, area.top, area.right, area.bottom),
+    page: page == null ? null : RectD(page.left, page.top, page.right, page.bottom),
+  );
+  final paint = Paint()..isAntiAlias = true;
+  for (final l in g.lines) {
+    paint
+      ..color = Color(l.color)
+      ..strokeWidth = l.width * lineScale;
+    c.drawLine(Offset(l.a.x, l.a.y), Offset(l.b.x, l.b.y), paint);
+  }
+  if (g.dots.isNotEmpty) {
+    final dot = Paint()..color = Color(g.dotColor).withValues(alpha: 1);
+    for (final d in g.dots) {
+      c.drawCircle(Offset(d.x, d.y), math.min(0.9 * lineScale, t.spacing * 0.2), dot);
+    }
   }
 }
 
@@ -118,6 +99,15 @@ void paintImageEl(Canvas c, ImageEl e, RenderAssets a) {
 }
 
 void paintTextEl(Canvas c, TextEl t) {
+  if (t.ruled) {
+    final tp = TextPainter(
+      text: markdownToPlainSpan(t.markdown, t.fontSize, Color(t.color), maxHeading: ruledMaxHeading(t)),
+      strutStyle: ruledStrut(t),
+      textDirection: TextDirection.ltr,
+    )..layout(maxWidth: math.max(10, t.rect.width));
+    tp.paint(c, Offset(t.rect.left, t.rect.top + ruledBaselineShift(t)));
+    return;
+  }
   final tp = TextPainter(text: markdownToPlainSpan(t.markdown, t.fontSize, Color(t.color)), textDirection: TextDirection.ltr)
     ..layout(maxWidth: math.max(10, t.rect.width - 8));
   tp.paint(c, Offset(t.rect.left + 4, t.rect.top + 4));
@@ -155,7 +145,7 @@ void paintPage(Canvas c, Note n, NotePage p, RenderAssets a, {Rect? area, bool p
           Paint()..filterQuality = FilterQuality.medium);
     }
   } else {
-    paintTemplate(c, t, pageRect);
+    paintTemplate(c, t, pageRect, page: canvasLayout ? null : pageRect);
   }
   if (!canvasLayout) {
     c.save();

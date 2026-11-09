@@ -14,7 +14,8 @@ enum PaperSize {
 }
 
 class Note {
-  static const formatVersion = 1;
+  /// 2: Cornell and staff paper, text typed on the lines (`lh` on text).
+  static const formatVersion = 2;
 
   final String id;
   final String title;

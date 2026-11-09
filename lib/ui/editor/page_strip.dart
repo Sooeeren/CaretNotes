@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/model/note.dart';
 import '../../core/model/page.dart';
+import '../menu.dart';
 import 'editor_controller.dart';
 import 'painters.dart';
 import 'pdf_cache.dart';
@@ -62,7 +63,7 @@ class _PageStripState extends State<PageStrip> {
                   buildDefaultDragHandles: false,
                   padding: const EdgeInsets.all(8),
                   itemCount: n.pages.length,
-                  onReorder: (a, b) => c.movePage(a, b > a ? b - 1 : b),
+                  onReorderItem: c.movePage, // newIndex already accounts for the removed item
                   itemBuilder: (ctx, i) {
                     final pg = n.pages[i];
                     return ReorderableDelayedDragStartListener(
@@ -123,12 +124,12 @@ class _PageStripState extends State<PageStrip> {
       context: context,
       position: RelativeRect.fromLTRB(pos.dx, pos.dy, pos.dx, pos.dy),
       items: [
-        const PopupMenuItem(value: 'add', child: Text('Insert blank page after')),
-        const PopupMenuItem(value: 'dup', child: Text('Duplicate page')),
-        const PopupMenuItem(value: 'tpl', child: Text('Page template…')),
-        if (i > 0) const PopupMenuItem(value: 'up', child: Text('Move up')),
-        if (i < c.note.pages.length - 1) const PopupMenuItem(value: 'down', child: Text('Move down')),
-        if (c.note.pages.length > 1) const PopupMenuItem(value: 'del', child: Text('Delete page')),
+        iconMenuItem('add', Icons.note_add_outlined, 'Insert blank page after'),
+        iconMenuItem('dup', Icons.content_copy_outlined, 'Duplicate page'),
+        iconMenuItem('tpl', Icons.texture_outlined, 'Page template…'),
+        if (i > 0) iconMenuItem('up', Icons.arrow_upward, 'Move up'),
+        if (i < c.note.pages.length - 1) iconMenuItem('down', Icons.arrow_downward, 'Move down'),
+        if (c.note.pages.length > 1) iconMenuItem('del', Icons.delete_outline, 'Delete page'),
       ],
     );
     switch (v) {

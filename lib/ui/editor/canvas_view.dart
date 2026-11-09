@@ -779,9 +779,10 @@ class _CanvasViewState extends State<CanvasView> {
       final tl = _toScreen(Offset(e.rect.left + origin.dx, e.rect.top + origin.dy));
       if (tl.dy > _viewSize.height + 50 || tl.dy + e.rect.height * _scale < -50) continue;
       if (e.id == editingId) {
+        // The formatting bar sits above the text, so the text itself stays put.
         setEditor(Positioned(
           left: tl.dx,
-          top: tl.dy,
+          top: tl.dy - textBarHeight * _scale,
           child: ScaledBox(
             width: e.rect.width,
             height: e.rect.height,
@@ -801,7 +802,12 @@ class _CanvasViewState extends State<CanvasView> {
           left: tl.dx,
           top: tl.dy,
           child: IgnorePointer(
-            child: ScaledBox(width: e.rect.width, height: e.rect.height, scale: _scale, child: RenderedMarkdown(el: e)),
+            child: ScaledBox(
+              width: e.rect.width,
+              height: e.rect.height,
+              scale: _scale,
+              child: e.ruled ? RuledText(el: e) : RenderedMarkdown(el: e),
+            ),
           ),
         ));
       }

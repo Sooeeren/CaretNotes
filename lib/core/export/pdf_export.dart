@@ -11,6 +11,7 @@ import '../ink/stroke_geometry.dart';
 import '../model/elements.dart';
 import '../model/note.dart';
 import '../model/page.dart';
+import '../paper.dart';
 import 'export_fonts.dart';
 import 'pdf_stamp.dart';
 
@@ -112,6 +113,7 @@ Future<Uint8List> _build(Note note, List<ExportSheet> sheets, ExportFonts fonts,
     {bool transparentPdfPages = false, Map<String, Uint8List> rasters = const {}}) async {
   pw.Font? f(Uint8List? b) => b == null ? null : pw.Font.ttf(ByteData.sublistView(b));
   final regular = f(fonts.regular), bold = f(fonts.bold), italic = f(fonts.italic), mono = f(fonts.mono);
+  final metrics = _lineMetrics(fonts.regular);
   final doc = pw.Document(
     compress: compress,
     title: note.title,
@@ -154,11 +156,19 @@ Future<Uint8List> _build(Note note, List<ExportSheet> sheets, ExportFonts fonts,
           painter: (g, size) => _paintSheet(g, note, s, imageFor, bg, transparentPdfPages),
         ),
         for (final t in texts)
-          pw.Positioned(
-            left: t.rect.left - a.left + 4,
-            top: t.rect.top - a.top + 4,
-            child: pw.SizedBox(width: math.max(10, t.rect.width - 8), child: _markdown(t, mono)),
-          ),
+          if (t.ruled)
+            pw.Positioned(
+              left: t.rect.left - a.left,
+              // First baseline where the editor puts it: just above the ruled line.
+              top: t.rect.top - a.top + t.lineHeight! * 0.9 - metrics.ascent * t.fontSize,
+              child: pw.SizedBox(width: math.max(10, t.rect.width), child: _markdown(t, mono, ruled: metrics)),
+            )
+          else
+            pw.Positioned(
+              left: t.rect.left - a.left + 4,
+              top: t.rect.top - a.top + 4,
+              child: pw.SizedBox(width: math.max(10, t.rect.width - 8), child: _markdown(t, mono)),
+            ),
       ]),
     ));
   }
@@ -181,13 +191,13 @@ void _paintSheet(PdfGraphics g, Note note, ExportSheet s, PdfImage? Function(Str
       g.fillPath();
       if (bg != null) {
         g.saveContext();
-        g.setTransform(Matrix4.translationValues(0, p.height, 0)..scale(1.0, -1.0, 1.0));
+        g.setTransform(Matrix4.translationValues(0, p.height, 0)..scaleByDouble(1.0, -1.0, 1.0, 1.0));
         g.drawImage(bg, 0, 0, p.width, p.height);
         g.restoreContext();
       }
     }
   } else {
-    _template(g, p.templateOverride ?? note.template, a);
+    _template(g, p.templateOverride ?? note.template, a, note.layout == NoteLayout.canvas ? null : RectD(0, 0, p.width, p.height));
   }
 
   for (final e in paintOrder(p.elements)) {
@@ -203,52 +213,24 @@ void _paintSheet(PdfGraphics g, Note note, ExportSheet s, PdfImage? Function(Str
   }
 }
 
-void _template(PdfGraphics g, Template t, RectD area) {
+void _template(PdfGraphics g, Template t, RectD area, RectD? page) {
   g.setFillColor(PdfColor.fromInt(t.paperColor));
   g.drawRect(area.left, area.top, area.width, area.height);
   g.fillPath();
-  if (t.kind == TemplateKind.blank || t.spacing < 4) return;
-  final s = t.spacing;
-  final c = PdfColor.fromInt(t.lineColor);
-  g.setStrokeColor(c);
-  g.setLineWidth(0.5);
-  final x0 = (area.left / s).floor() * s, y0 = (area.top / s).floor() * s;
-  switch (t.kind) {
-    case TemplateKind.lined:
-      for (var y = y0; y <= area.bottom; y += s) {
-        if (y < s * 2 && area.top <= 0) continue;
-        g.moveTo(area.left, y);
-        g.lineTo(area.right, y);
-      }
-      g.strokePath();
-      if (area.left <= 0 && area.top <= 0) {
-        final mx = (s * 3).clamp(48.0, 84.0); // same as the editor's notebook margin
-        g.setStrokeColor(PdfColor.fromInt(0x66E07070));
-        g.setLineWidth(0.8);
-        g.moveTo(mx, area.top);
-        g.lineTo(mx, area.bottom);
-        g.strokePath();
-      }
-    case TemplateKind.grid:
-      for (var y = y0; y <= area.bottom; y += s) {
-        g.moveTo(area.left, y);
-        g.lineTo(area.right, y);
-      }
-      for (var x = x0; x <= area.right; x += s) {
-        g.moveTo(x, area.top);
-        g.lineTo(x, area.bottom);
-      }
-      g.strokePath();
-    case TemplateKind.dots:
-      g.setFillColor(c);
-      for (var y = y0; y <= area.bottom; y += s) {
-        for (var x = x0; x <= area.right; x += s) {
-          g.drawEllipse(x, y, 0.8, 0.8);
-        }
-      }
-      g.fillPath();
-    case TemplateKind.blank:
-      break;
+  final geo = paperGeometry(t, area, page: page);
+  for (final l in geo.lines) {
+    g.setStrokeColor(PdfColor.fromInt(l.color));
+    g.setLineWidth(l.width * 0.85);
+    g.moveTo(l.a.x, l.a.y);
+    g.lineTo(l.b.x, l.b.y);
+    g.strokePath();
+  }
+  if (geo.dots.isNotEmpty) {
+    g.setFillColor(PdfColor.fromInt(geo.dotColor));
+    for (final d in geo.dots) {
+      g.drawEllipse(d.x, d.y, 0.8, 0.8);
+    }
+    g.fillPath();
   }
 }
 
@@ -276,7 +258,7 @@ void _image(PdfGraphics g, ImageEl e, PdfImage? img) {
   g.saveContext();
   g.setTransform(Matrix4.translationValues(r.center.x, r.center.y, 0)
     ..rotateZ(e.rotation)
-    ..scale(1.0, -1.0, 1.0));
+    ..scaleByDouble(1.0, -1.0, 1.0, 1.0));
   // local coords now y-up, centered on the image
   g.drawRect(-w / 2, -h / 2, w, h);
   g.clipPath();
@@ -290,21 +272,46 @@ void _image(PdfGraphics g, ImageEl e, PdfImage? img) {
 
 final _inlineRe = RegExp(r'(\*\*[^*]+\*\*|__[^_]+__|\*[^*]+\*|_[^_]+_|`[^`]+`|~~[^~]+~~|\$[^$]+\$|\[[^\]]+\]\([^)]+\))');
 
-pw.Widget _markdown(TextEl t, pw.Font? mono) {
+/// Ascent and descent (per 1 pt of font size) of the font the PDF text uses.
+/// The pdf package makes every text line exactly (ascent - descent) × size tall.
+class _LineMetrics {
+  final double ascent, descent;
+  const _LineMetrics(this.ascent, this.descent);
+  double get height => ascent - descent;
+}
+
+_LineMetrics _lineMetrics(Uint8List? ttf) {
+  if (ttf != null) {
+    try {
+      final p = TtfParser(ByteData.sublistView(ttf));
+      return _LineMetrics(p.ascent / p.unitsPerEm, p.descent / p.unitsPerEm);
+    } catch (_) {}
+  }
+  return const _LineMetrics(0.931, -0.225); // Helvetica, the pdf package's default
+}
+
+/// [ruled]: text typed on lines; every line is exactly [TextEl.lineHeight] apart and
+/// headings/code keep the body size and font so they stay on the lines.
+pw.Widget _markdown(TextEl t, pw.Font? mono, {_LineMetrics? ruled}) {
   final color = PdfColor.fromInt(t.color | 0xFF000000);
-  final base = pw.TextStyle(fontSize: t.fontSize, color: color, lineSpacing: t.fontSize * 0.25);
+  final gap = ruled == null ? t.fontSize * 0.25 : t.lineHeight! - ruled.height * t.fontSize;
+  final base = pw.TextStyle(fontSize: t.fontSize, color: color, lineSpacing: gap);
+  if (ruled != null) mono = null;
   final codeStyle = mono == null ? base : base.copyWith(font: mono);
+  pw.Widget block(pw.Widget w) => ruled == null ? w : pw.Padding(padding: pw.EdgeInsets.only(bottom: gap), child: w);
   final blocks = <pw.Widget>[];
   var inCode = false;
   final code = StringBuffer();
   for (var line in t.markdown.split('\n')) {
     if (line.trimLeft().startsWith('```')) {
       if (inCode) {
-        blocks.add(pw.Container(
-          padding: const pw.EdgeInsets.all(4),
-          color: PdfColor.fromInt(0x14808080),
-          child: pw.Text(code.toString().trimRight(), style: codeStyle.copyWith(fontSize: t.fontSize * 0.92)),
-        ));
+        blocks.add(ruled != null
+            ? block(pw.Text(code.toString().trimRight(), style: codeStyle))
+            : pw.Container(
+                padding: const pw.EdgeInsets.all(4),
+                color: PdfColor.fromInt(0x14808080),
+                child: pw.Text(code.toString().trimRight(), style: codeStyle.copyWith(fontSize: t.fontSize * 0.92)),
+              ));
         code.clear();
       }
       inCode = !inCode;
@@ -318,7 +325,9 @@ pw.Widget _markdown(TextEl t, pw.Font? mono) {
     final h = RegExp(r'^(#{1,6})\s+').firstMatch(line);
     if (h != null) {
       final level = h.group(1)!.length;
-      style = base.copyWith(fontSize: t.fontSize * (level == 1 ? 1.7 : level == 2 ? 1.4 : 1.2), fontWeight: pw.FontWeight.bold);
+      style = ruled != null
+          ? base.copyWith(fontWeight: pw.FontWeight.bold)
+          : base.copyWith(fontSize: t.fontSize * (level == 1 ? 1.7 : level == 2 ? 1.4 : 1.2), fontWeight: pw.FontWeight.bold);
       line = line.substring(h.end);
     }
     line = line
@@ -347,7 +356,7 @@ pw.Widget _markdown(TextEl t, pw.Font? mono) {
     }
     if (pos < line.length) spans.add(pw.TextSpan(text: line.substring(pos), style: style));
     if (spans.isEmpty) spans.add(pw.TextSpan(text: ' ', style: style));
-    blocks.add(pw.RichText(text: pw.TextSpan(children: spans, style: style)));
+    blocks.add(block(pw.RichText(text: pw.TextSpan(children: spans, style: style))));
   }
   if (inCode && code.isNotEmpty) blocks.add(pw.Text(code.toString(), style: codeStyle));
   return pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: blocks);

@@ -191,25 +191,35 @@ class _ExportDialogState extends State<_ExportDialog> {
           const SizedBox(height: 16),
           if (n.layout == NoteLayout.paged) ...[
             Text('Pages', style: t.textTheme.labelLarge),
-            RadioListTile(value: 'all', groupValue: _which, onChanged: (v) => setState(() => _which = v!), title: Text('All ${n.pages.length} pages'), dense: true),
-            RadioListTile(value: 'current', groupValue: _which, onChanged: (v) => setState(() => _which = v!), title: Text('Current page (${widget.currentPage + 1})'), dense: true),
-            RadioListTile(
-              value: 'range',
+            RadioGroup<String>(
               groupValue: _which,
               onChanged: (v) => setState(() => _which = v!),
-              dense: true,
-              title: TextField(
-                controller: _range,
-                decoration: const InputDecoration(hintText: 'e.g. 1-3, 5', isDense: true),
-                onTap: () => setState(() => _which = 'range'),
-              ),
+              child: Column(children: [
+                RadioListTile(value: 'all', title: Text('All ${n.pages.length} pages'), dense: true),
+                RadioListTile(value: 'current', title: Text('Current page (${widget.currentPage + 1})'), dense: true),
+                RadioListTile(
+                  value: 'range',
+                  dense: true,
+                  title: TextField(
+                    controller: _range,
+                    decoration: const InputDecoration(hintText: 'e.g. 1-3, 5', isDense: true),
+                    onTap: () => setState(() => _which = 'range'),
+                  ),
+                ),
+              ]),
             ),
           ],
           if (n.layout == NoteLayout.endless) Text('The long page is split into A4 sheets.', style: t.textTheme.bodySmall),
           if (n.layout == NoteLayout.canvas) ...[
             Text('Canvas', style: t.textTheme.labelLarge),
-            RadioListTile(value: CanvasExport.onePage, groupValue: _canvas, onChanged: (v) => setState(() => _canvas = v!), title: const Text('Everything on one large page'), dense: true),
-            RadioListTile(value: CanvasExport.tiles, groupValue: _canvas, onChanged: (v) => setState(() => _canvas = v!), title: const Text('Split into A4 sheets'), dense: true),
+            RadioGroup<CanvasExport>(
+              groupValue: _canvas,
+              onChanged: (v) => setState(() => _canvas = v!),
+              child: const Column(children: [
+                RadioListTile(value: CanvasExport.onePage, title: Text('Everything on one large page'), dense: true),
+                RadioListTile(value: CanvasExport.tiles, title: Text('Split into A4 sheets'), dense: true),
+              ]),
+            ),
           ],
           if (_format != ExportFormat.pdf) ...[
             const SizedBox(height: 8),

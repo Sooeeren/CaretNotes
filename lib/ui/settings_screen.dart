@@ -187,14 +187,15 @@ class _SyncSettingsState extends State<_SyncSettings> {
 
     Widget providerTile(SyncProvider p, String title, String subtitle, IconData icon) => RadioListTile<SyncProvider>(
           value: p,
-          groupValue: s.syncProvider,
-          onChanged: (v) => _setConfig({}, provider: v),
           title: Text(title),
           subtitle: Text(subtitle),
           secondary: Icon(icon),
         );
 
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+    return RadioGroup<SyncProvider>(
+      groupValue: s.syncProvider,
+      onChanged: (v) => _setConfig({}, provider: v),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       providerTile(SyncProvider.none, 'Off', 'Notes stay on this device only', Icons.cloud_off),
       providerTile(SyncProvider.folder, 'Synced folder (Proton Drive, OneDrive, Dropbox…)',
           'Pick a folder that your cloud\'s desktop app keeps in sync', Icons.folder_shared),
@@ -225,7 +226,7 @@ class _SyncSettingsState extends State<_SyncSettings> {
         Padding(
           padding: const EdgeInsets.fromLTRB(72, 0, 16, 12),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('Google needs a free "OAuth client" for apps that aren\'t in a store. The README explains how to make one in 5 minutes.', style: note),
+            Text('Google needs a free "OAuth client" for apps that aren\'t in a store. docs/SYNC.md in the CaretNotes project explains how to make one in 5 minutes.', style: note),
             const SizedBox(height: 8),
             TextField(
               controller: _clientId,
@@ -323,6 +324,7 @@ class _SyncSettingsState extends State<_SyncSettings> {
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
           child: Text('Tip: notes are saved here first and copied into the synced folder, so writing never waits for the cloud.', style: note),
         ),
-    ]);
+      ]),
+    );
   }
 }

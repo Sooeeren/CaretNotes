@@ -106,7 +106,20 @@ class TextEl extends Element {
   final double fontSize;
   final int color;
 
-  const TextEl({required this.id, required this.rect, required this.markdown, this.fontSize = 14, this.color = 0xFF222222});
+  /// Set for text typed on the paper's lines: every text line is exactly this tall
+  /// and sits on a ruled line. Null for a free text box.
+  final double? lineHeight;
+
+  const TextEl({
+    required this.id,
+    required this.rect,
+    required this.markdown,
+    this.fontSize = 14,
+    this.color = 0xFF222222,
+    this.lineHeight,
+  });
+
+  bool get ruled => lineHeight != null;
 
   @override
   RectD bounds() => rect;
@@ -115,7 +128,20 @@ class TextEl extends Element {
   TextEl transformed(Affine t) {
     final tl = t.apply(rect.topLeft);
     final s = t.scaleFactor;
-    return copyWith(rect: RectD(tl.x, tl.y, tl.x + rect.width * s, tl.y + rect.height * s), fontSize: fontSize * s);
+    final lh = lineHeight;
+    if (lh != null && (s - 1).abs() < 1e-6) {
+      // Moved, not resized: stay on the lines.
+      final top = snapToLines(tl.y, lh);
+      return copyWith(rect: RectD(tl.x, top, tl.x + rect.width, top + rect.height));
+    }
+    return TextEl(
+      id: id,
+      rect: RectD(tl.x, tl.y, tl.x + rect.width * s, tl.y + rect.height * s),
+      markdown: markdown,
+      fontSize: fontSize * s,
+      color: color,
+      lineHeight: lh == null ? null : lh * s,
+    );
   }
 
   TextEl copyWith({RectD? rect, String? markdown, double? fontSize, int? color, String? id}) => TextEl(
@@ -124,14 +150,22 @@ class TextEl extends Element {
         markdown: markdown ?? this.markdown,
         fontSize: fontSize ?? this.fontSize,
         color: color ?? this.color,
+        lineHeight: lineHeight,
       );
 
   @override
   TextEl withId(String id) => copyWith(id: id);
 
   @override
-  Map<String, dynamic> toJson() =>
-      {'type': 'text', 'id': id, 'rect': rect.toJson(), 'md': markdown, 'size': fontSize, 'color': color};
+  Map<String, dynamic> toJson() => {
+        'type': 'text',
+        'id': id,
+        'rect': rect.toJson(),
+        'md': markdown,
+        'size': fontSize,
+        'color': color,
+        if (lineHeight != null) 'lh': lineHeight,
+      };
 
   factory TextEl.fromJson(Map<String, dynamic> j) => TextEl(
         id: j['id'] as String,
@@ -139,6 +173,7 @@ class TextEl extends Element {
         markdown: j['md'] as String,
         fontSize: (j['size'] as num).toDouble(),
         color: j['color'] as int,
+        lineHeight: (j['lh'] as num?)?.toDouble(),
       );
 }
 

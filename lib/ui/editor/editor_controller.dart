@@ -16,10 +16,14 @@ import '../../core/library/library_store.dart';
 import '../../core/model/elements.dart';
 import '../../core/model/note.dart';
 import '../../core/model/page.dart';
+import '../../core/paper.dart';
 
 enum EditorTool { pen, highlighter, eraser, select, text }
 
 enum SelectMode { lasso, box }
+
+/// What the text tool does on tap: type on the paper's lines, or place a free text box.
+enum TextMode { lines, box }
 
 /// The stroke (or lasso path) currently being drawn. Repaints only the live layer.
 class LiveInk extends ChangeNotifier {
@@ -83,6 +87,7 @@ class EditorController extends ChangeNotifier {
   bool eraserPartial = false;
   double eraserSize = 8;
   SelectMode selectMode = SelectMode.lasso;
+  TextMode textMode = TextMode.lines;
   bool rulerVisible = false;
 
   final LiveInk live = LiveInk();
@@ -488,9 +493,30 @@ class EditorController extends ChangeNotifier {
   String? editingTextId;
   String? editingTextPageId;
 
-  TextEl addText(String pageId, Vec2 at) {
-    final w = math.min(320.0, math.max(160.0, page(pageId).width - at.x - 24));
-    final t = TextEl(id: newId(), rect: RectD(at.x, at.y, at.x + w, at.y + 36), markdown: '', color: penColor == 0xFF1B2A6B ? 0xFF222222 : penColor);
+  TextEl addText(String pageId, Vec2 at, {TextMode? mode}) {
+    final color = penColor == 0xFF1B2A6B ? 0xFF222222 : penColor;
+    final pg = page(pageId);
+    final TextEl t;
+    if ((mode ?? textMode) == TextMode.lines) {
+      final canvas = _note.layout == NoteLayout.canvas;
+      final f = ruledFrameAt(
+        pg.templateOverride ?? _note.template,
+        at,
+        pageWidth: canvas ? null : pg.width,
+        pageHeight: canvas || _note.layout == NoteLayout.endless ? null : pg.height,
+      );
+      t = TextEl(
+        id: newId(),
+        rect: RectD(f.left, f.top, f.right, f.top + f.lineHeight),
+        markdown: '',
+        color: color,
+        fontSize: ruledFontSize(f.lineHeight),
+        lineHeight: f.lineHeight,
+      );
+    } else {
+      final w = math.min(320.0, math.max(160.0, pg.width - at.x - 24));
+      t = TextEl(id: newId(), rect: RectD(at.x, at.y, at.x + w, at.y + 36), markdown: '', color: color);
+    }
     addElement(pageId, t);
     editingTextId = t.id;
     editingTextPageId = pageId;
@@ -597,15 +623,26 @@ class EditorController extends ChangeNotifier {
     commit(pages);
   }
 
+  /// Text typed on lines follows the new line spacing.
+  NotePage _fitLines(NotePage pg, Template t) {
+    if (!pg.elements.any((e) => e is TextEl && e.ruled && e.lineHeight != t.spacing)) return pg;
+    return pg.copyWith(elements: [for (final e in pg.elements) e is TextEl ? fitTextToLines(e, t.spacing) : e]);
+  }
+
   void setNoteTemplate(Template t) {
-    _note = _note.copyWith(template: t);
+    _note = _note.copyWith(
+      template: t,
+      pages: [for (final p in _note.pages) p.templateOverride == null ? _fitLines(p, t) : p],
+    );
     _markDirty();
     notifyListeners();
   }
 
   void setPageTemplate(String pageId, Template? t) {
     final pg = page(pageId);
-    _commitPage(t == null ? pg.copyWith(clearTemplateOverride: true) : pg.copyWith(templateOverride: t));
+    _commitPage(t == null
+        ? _fitLines(pg.copyWith(clearTemplateOverride: true), _note.template)
+        : _fitLines(pg.copyWith(templateOverride: t), t));
   }
 
   void rename(String title) {

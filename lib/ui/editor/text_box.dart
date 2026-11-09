@@ -7,19 +7,22 @@ import 'package:highlight/highlight.dart' show highlight, Node, Result;
 import 'package:markdown/markdown.dart' as md;
 
 import '../../core/model/elements.dart';
+import 'markdown_plain.dart';
 
 /// Text controller that styles Markdown while you type (Typora/Obsidian style):
 /// the raw syntax stays in the text, markers are dimmed, content is formatted.
 class MarkdownEditingController extends TextEditingController {
-  MarkdownEditingController({super.text});
+  /// Caps heading sizes (text on lines).
+  final double? maxHeading;
+  MarkdownEditingController({super.text, this.maxHeading});
 
   @override
   TextSpan buildTextSpan({required BuildContext context, TextStyle? style, required bool withComposing}) =>
-      styleMarkdown(text, style ?? const TextStyle());
+      styleMarkdown(text, style ?? const TextStyle(), maxHeading: maxHeading);
 
   static final _inline = RegExp(r'(\*\*)([^*\n]+)(\*\*)|(__)([^_\n]+)(__)|(~~)([^~\n]+)(~~)|(`)([^`\n]+)(`)|(\$)([^$\n]+)(\$)|(\*)([^*\n]+)(\*)|(_)([^_\n]+)(_)');
 
-  static TextSpan styleMarkdown(String text, TextStyle base) {
+  static TextSpan styleMarkdown(String text, TextStyle base, {double? maxHeading}) {
     final dim = base.copyWith(color: (base.color ?? Colors.black).withValues(alpha: 0.38));
     final children = <InlineSpan>[];
     final lines = text.split('\n');
@@ -44,7 +47,8 @@ class MarkdownEditingController extends TextEditingController {
       final quote = RegExp(r'^(>\s?)').firstMatch(line);
       if (h != null) {
         final level = h.group(1)!.trim().length;
-        final size = (base.fontSize ?? 14) * (level == 1 ? 1.7 : level == 2 ? 1.4 : 1.2);
+        final full = (base.fontSize ?? 14) * (level == 1 ? 1.7 : level == 2 ? 1.4 : 1.2);
+        final size = maxHeading != null && full > maxHeading ? maxHeading : full;
         style = base.copyWith(fontSize: size, fontWeight: FontWeight.w700);
         children.add(TextSpan(text: h.group(1), style: dim.copyWith(fontSize: size)));
         rest = line.substring(h.end);
@@ -130,6 +134,57 @@ double measureMarkdownHeight(String markdown, double width, double fontSize) {
     textDirection: TextDirection.ltr,
   )..layout(maxWidth: math.max(10, width - 8));
   return tp.height + 12;
+}
+
+// ---------- text on lines ----------
+
+/// Every line of ruled text is exactly one line spacing tall.
+StrutStyle ruledStrut(TextEl el) => StrutStyle(
+      fontFamily: 'Segoe UI',
+      fontSize: el.fontSize,
+      height: el.lineHeight! / el.fontSize,
+      forceStrutHeight: true,
+    );
+
+TextStyle ruledStyle(TextEl el) => TextStyle(fontSize: el.fontSize, color: Color(el.color), fontFamily: 'Segoe UI');
+
+double ruledMaxHeading(TextEl el) => el.lineHeight! * 0.82;
+
+/// How far ruled text is pushed down so its baselines sit on the ruled lines.
+double ruledBaselineShift(TextEl el) {
+  final lh = el.lineHeight!;
+  final tp = TextPainter(text: TextSpan(text: 'Hg', style: ruledStyle(el)), strutStyle: ruledStrut(el), textDirection: TextDirection.ltr)
+    ..layout();
+  final baseline = tp.computeDistanceToActualBaseline(TextBaseline.alphabetic);
+  tp.dispose();
+  return lh - baseline - lh * 0.1;
+}
+
+/// Height of ruled text: a whole number of lines.
+double measureRuledHeight(TextEl el, String markdown) {
+  final lh = el.lineHeight!;
+  final tp = TextPainter(
+    text: MarkdownEditingController.styleMarkdown(markdown.isEmpty ? ' ' : markdown, ruledStyle(el), maxHeading: ruledMaxHeading(el)),
+    strutStyle: ruledStrut(el),
+    textDirection: TextDirection.ltr,
+  )..layout(maxWidth: math.max(10, el.rect.width));
+  final lines = math.max(1, (tp.height / lh).round());
+  tp.dispose();
+  return lines * lh;
+}
+
+/// Ruled text that isn't being edited: Markdown markers hidden, lines on the paper's lines.
+class RuledText extends StatelessWidget {
+  final TextEl el;
+  const RuledText({super.key, required this.el});
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: EdgeInsets.only(top: ruledBaselineShift(el)),
+        child: Text.rich(
+          markdownToPlainSpan(el.markdown, el.fontSize, Color(el.color), maxHeading: ruledMaxHeading(el)),
+          strutStyle: ruledStrut(el),
+        ),
+      );
 }
 
 class _MathSyntax extends md.InlineSyntax {
@@ -285,8 +340,12 @@ class TextBoxEditor extends StatefulWidget {
   State<TextBoxEditor> createState() => _TextBoxEditorState();
 }
 
+/// Height of the formatting bar above a text being edited, in document points.
+const textBarHeight = 32.0;
+
 class _TextBoxEditorState extends State<TextBoxEditor> {
-  late final MarkdownEditingController _c = MarkdownEditingController(text: widget.el.markdown);
+  late final MarkdownEditingController _c =
+      MarkdownEditingController(text: widget.el.markdown, maxHeading: widget.el.ruled ? ruledMaxHeading(widget.el) : null);
   final _focus = FocusNode();
 
   @override
@@ -305,7 +364,10 @@ class _TextBoxEditorState extends State<TextBoxEditor> {
     super.dispose();
   }
 
-  void _changed(String v) => widget.onChanged(v, measureMarkdownHeight(v, widget.el.rect.width, widget.el.fontSize));
+  void _changed(String v) => widget.onChanged(
+        v,
+        widget.el.ruled ? measureRuledHeight(widget.el, v) : measureMarkdownHeight(v, widget.el.rect.width, widget.el.fontSize),
+      );
 
   void _apply(MdAction a) {
     _c.value = applyMarkdown(_c.value, a);
@@ -328,7 +390,7 @@ class _TextBoxEditorState extends State<TextBoxEditor> {
       elevation: 2,
       borderRadius: BorderRadius.circular(8),
       color: Theme.of(context).colorScheme.surfaceContainerLow,
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
+      child: SizedBox(height: textBarHeight - 4, child: Row(mainAxisSize: MainAxisSize.min, children: [
         b(MdAction.heading, const Text('H', style: TextStyle(fontWeight: FontWeight.w800, fontSize: s)), 'Heading'),
         b(MdAction.bold, const Icon(Icons.format_bold, size: s + 3), 'Bold'),
         b(MdAction.italic, const Icon(Icons.format_italic, size: s + 3), 'Italic'),
@@ -336,7 +398,7 @@ class _TextBoxEditorState extends State<TextBoxEditor> {
         b(MdAction.checkbox, const Icon(Icons.check_box_outlined, size: s + 3), 'Checkbox'),
         b(MdAction.code, const Icon(Icons.code, size: s + 3), 'Code'),
         b(MdAction.math, const Text('∑', style: TextStyle(fontSize: s)), 'Math (LaTeX)'),
-      ]),
+      ])),
     );
   }
 
@@ -344,13 +406,43 @@ class _TextBoxEditorState extends State<TextBoxEditor> {
   Widget build(BuildContext context) {
     final color = Color(widget.el.color);
     return Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-      _bar(context),
+      SizedBox(
+        height: textBarHeight - 4,
+        child: Align(alignment: Alignment.topLeft, child: FittedBox(fit: BoxFit.scaleDown, child: _bar(context))),
+      ),
       const SizedBox(height: 4),
       _field(context, color),
     ]);
   }
 
   Widget _field(BuildContext context, Color color) {
+    final el = widget.el;
+    if (el.ruled) {
+      // Same layout as RuledText, so nothing jumps when editing starts or stops.
+      return Container(
+        width: el.rect.width,
+        foregroundDecoration: BoxDecoration(
+          border: Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5), width: 0.8),
+          borderRadius: BorderRadius.circular(2),
+        ),
+        child: TextField(
+          controller: _c,
+          focusNode: _focus,
+          maxLines: null,
+          style: ruledStyle(el),
+          strutStyle: ruledStrut(el),
+          cursorColor: Theme.of(context).colorScheme.primary,
+          decoration: InputDecoration(
+            isCollapsed: true,
+            border: InputBorder.none,
+            filled: false,
+            contentPadding: EdgeInsets.only(top: ruledBaselineShift(el)),
+            hintText: 'Type on the lines',
+          ),
+          onChanged: _changed,
+        ),
+      );
+    }
     return Container(
       decoration: BoxDecoration(
         border: Border.all(color: Theme.of(context).colorScheme.primary, width: 1.2),

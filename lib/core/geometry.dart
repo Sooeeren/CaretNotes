@@ -170,3 +170,6 @@ double polylineLength(List<Vec2> pts) {
   }
   return l;
 }
+
+/// Snaps [y] to the nearest multiple of [step] (ruled text after a move).
+double snapToLines(double y, double step) => step <= 0 ? y : (y / step).round() * step;

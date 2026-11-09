@@ -14,8 +14,10 @@ import '../../core/model/note.dart';
 import '../../core/settings.dart';
 import '../controllers.dart';
 import '../home/dialogs.dart';
+import '../menu.dart';
 import 'canvas_view.dart';
 import 'editor_controller.dart';
+import 'editor_shortcuts.dart';
 import 'image_box.dart';
 import 'page_strip.dart';
 import 'painters.dart';
@@ -160,7 +162,7 @@ class _EditorScreenState extends State<EditorScreen> {
     final text = await Pasteboard.text;
     if (text != null && text.trim().isNotEmpty) {
       final at = _handle.visibleCenterLocal ?? const Vec2(60, 80);
-      final t = c.addText(_pageForInsert, at);
+      final t = c.addText(_pageForInsert, at, mode: TextMode.box);
       c.typeText(_pageForInsert, t.id, text, 40 + 18.0 * '\n'.allMatches(text).length);
       c.finishTextEdit();
     }
@@ -199,7 +201,9 @@ class _EditorScreenState extends State<EditorScreen> {
     final c = _c!;
     final pg = pageId == null ? null : c.page(pageId);
     final r = await showTemplateDialog(context, pg?.templateOverride ?? c.note.template,
-        allowPageOnly: pageId != null, hasOverride: pg?.templateOverride != null);
+        allowPageOnly: pageId != null,
+        hasOverride: pg?.templateOverride != null,
+        pageSize: Size((pg ?? c.note.pages.first).width, c.note.layout == NoteLayout.paged ? (pg ?? c.note.pages.first).height : (pg ?? c.note.pages.first).width * 1.414));
     if (r == null) return;
     final (t, whole) = r;
     if (pageId != null && !whole) {
@@ -267,15 +271,13 @@ class _EditorScreenState extends State<EditorScreen> {
       },
       child: Scaffold(
         body: SafeArea(
-          child: CallbackShortcuts(
-            bindings: c.editingTextId == null ? _shortcuts(c) : const {},
-            child: Focus(
-              focusNode: _focus,
-              autofocus: true,
-              child: ListenableBuilder(
-                listenable: c,
-                builder: (context, _) => _layout(context, c, settings, settingsCtl),
-              ),
+          child: EditorShortcuts(
+            c: c,
+            bindings: _shortcuts(c),
+            focusNode: _focus,
+            child: ListenableBuilder(
+              listenable: c,
+              builder: (context, _) => _layout(context, c, settings, settingsCtl),
             ),
           ),
         ),
@@ -447,21 +449,23 @@ class _EditorScreenState extends State<EditorScreen> {
         }
       },
       itemBuilder: (_) => [
-        if (n.layout == NoteLayout.paged) CheckedPopupMenuItem(value: 'pages', checked: _showPages, child: const Text('Page overview')),
-        if (n.layout == NoteLayout.paged) const PopupMenuItem(value: 'addpage', child: Text('Add page')),
-        if (n.layout == NoteLayout.paged) const PopupMenuItem(value: 'pdf', child: Text('Insert PDF pages…')),
-        const PopupMenuItem(value: 'template', child: Text('Paper template…')),
-        if (n.layout == NoteLayout.paged) const PopupMenuItem(value: 'pagetemplate', child: Text('Template for this page…')),
+        if (n.layout == NoteLayout.paged) iconMenuItem('pages', Icons.view_agenda_outlined, 'Page overview', checked: _showPages),
+        if (n.layout == NoteLayout.paged) iconMenuItem('addpage', Icons.note_add_outlined, 'Add page'),
+        if (n.layout == NoteLayout.paged) iconMenuItem('pdf', Icons.picture_as_pdf_outlined, 'Insert PDF pages…'),
+        iconMenuItem('template', Icons.texture_outlined, 'Paper template…'),
+        if (n.layout == NoteLayout.paged) iconMenuItem('pagetemplate', Icons.description_outlined, 'Template for this page…'),
         if (c.canSwitchLayout)
-          PopupMenuItem(value: 'layout', child: Text(n.layout == NoteLayout.paged ? 'Switch to endless page' : 'Switch to pages')),
+          n.layout == NoteLayout.paged
+              ? iconMenuItem('layout', Icons.vertical_split_outlined, 'Switch to endless page')
+              : iconMenuItem('layout', Icons.auto_stories_outlined, 'Switch to pages'),
         const PopupMenuDivider(),
-        if (editorExportAction != null) const PopupMenuItem(value: 'export', child: Text('Export as PDF / image…')),
-        CheckedPopupMenuItem(value: 'fav', checked: n.favorite, child: const Text('Favorite')),
-        const PopupMenuItem(value: 'rename', child: Text('Rename')),
+        if (editorExportAction != null) iconMenuItem('export', Icons.ios_share_outlined, 'Export as PDF / image…'),
+        iconMenuItem('fav', n.favorite ? Icons.star : Icons.star_outline, n.favorite ? 'Remove from favorites' : 'Add to favorites'),
+        iconMenuItem('rename', Icons.drive_file_rename_outline, 'Rename'),
         const PopupMenuDivider(),
-        const PopupMenuItem(value: 'fit', child: Text('Fit to width (Ctrl+0)')),
-        CheckedPopupMenuItem(value: 'finger', checked: settings.fingerDrawing, child: const Text('Draw with finger')),
-        if (settings.toolbarDock != ToolbarDock.top) const PopupMenuItem(value: 'dock', child: Text('Put toolbar back on top')),
+        iconMenuItem('fit', Icons.fit_screen_outlined, 'Fit to width', shortcut: 'Ctrl+0'),
+        iconMenuItem('finger', Icons.touch_app_outlined, 'Draw with finger', checked: settings.fingerDrawing),
+        if (settings.toolbarDock != ToolbarDock.top) iconMenuItem('dock', Icons.vertical_align_top, 'Put toolbar back on top'),
       ],
     );
   }

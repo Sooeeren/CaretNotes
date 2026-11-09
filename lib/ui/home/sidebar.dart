@@ -5,6 +5,7 @@ import '../../core/library/library_store.dart';
 import '../../core/model/folder_meta.dart';
 import '../controllers.dart';
 import '../folder_style.dart';
+import '../menu.dart';
 import '../theme.dart';
 import 'dialogs.dart';
 
@@ -200,10 +201,10 @@ class _SidebarState extends State<Sidebar> {
     final v = await showMenu<String>(
       context: context,
       position: RelativeRect.fromLTRB(pos.dx, pos.dy, pos.dx, pos.dy),
-      items: const [
-        PopupMenuItem(value: 'sub', child: Text('New subfolder')),
-        PopupMenuItem(value: 'edit', child: Text('Rename, color & icon')),
-        PopupMenuItem(value: 'delete', child: Text('Delete')),
+      items: [
+        iconMenuItem('sub', Icons.create_new_folder_outlined, 'New subfolder'),
+        iconMenuItem('edit', Icons.palette_outlined, 'Rename, color & icon'),
+        iconMenuItem('delete', Icons.delete_outline, 'Delete'),
       ],
     );
     if (!context.mounted) return;
