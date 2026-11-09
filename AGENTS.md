@@ -15,14 +15,15 @@ The top priorities:
 ```bash
 flutter pub get
 flutter analyze                          # must report "No issues found!"
-flutter test                             # whole suite must pass (115+ tests)
+flutter test                             # whole suite must pass (130+ tests)
 flutter test test/core/sync_test.dart    # one file
 flutter run -d windows                   # debug
 flutter build windows --release          # build\windows\x64\runner\Release\caret_notes.exe (+ DLLs + data\ next to it)
 dart run tool/seed_demo.dart <dir>/library   # fill a throwaway demo library
+flutter test tool/screenshots/readme_screenshots_test.dart   # re-render docs/screenshots/*.png
 ```
 
-Toolchain: Flutter 3.32 / Dart 3.8 and Visual Studio 2022 Build Tools (C++ workload). The ATL component is **not** installed, so don't add plugins that need ATL (that's why `flutter_secure_storage` was dropped).
+Toolchain: Flutter 3.47 / Dart 3.13 and Visual Studio (2022 Build Tools or newer, C++ workload). Under Flutter 3.47, `pdfrx` must be ≥ 2.12 and `image` < 4.11 (4.11 needs an `archive` that conflicts with `pdf` + `xml` 6). The ATL component is **not** installed, so don't add plugins that need ATL (that's why `flutter_secure_storage` was dropped).
 
 ### Running against a separate profile
 
@@ -35,6 +36,7 @@ Toolchain: Flutter 3.32 / Dart 3.8 and Visual Studio 2022 Build Tools (C++ workl
 ```
 lib/core/   pure Dart, NO Flutter widget imports (portable, unit-testable)
   geometry.dart               Vec2, RectD, Affine, rdp, pointInPolygon
+  paper.dart                  paper geometry (lines/dots per template, shared by screen + PDF), text-on-lines frames, presets
   model/                      Note, NotePage, Template, elements (StrokeEl/TextEl/ImageEl), FolderMeta
   format/note_codec.dart      .cnote = zip: note.json + assets/<id> + thumb.png
   ink/                        stroke outline, shape recognizer, eraser, selection, paint order
@@ -53,6 +55,7 @@ lib/ui/     Flutter UI
   settings_screen.dart, export_dialog.dart
 test/core, test/ui            unit + widget tests
 tool/seed_demo.dart           demo data
+tool/screenshots/             README screenshots rendered from the real widgets (Windows fonts)
 docs/superpowers/             design spec + original implementation plan
 ```
 
@@ -72,6 +75,8 @@ docs/superpowers/             design spec + original implementation plan
   - Conflict copies from sync clients (Proton `(# Name clash … #)`, Dropbox `(… conflicted copy …)`, OneDrive `-HOST`) are only treated as copies when the **note id matches**.
   - Half-written zips are skipped.
   - Changing provider cancels the running engine and resets state.
+- **Text on lines:** a `TextEl` with `lineHeight` set is typed on the paper's lines (`TextMode.lines`); without it, it's a free text box. Every line of ruled text is exactly `lineHeight` tall (forced strut) and shifted so baselines sit on the ruled lines (`ruledBaselineShift`). The screen widget, the painter and the PDF export must agree; moves snap to the lines and template changes refit it (`fitTextToLines`).
+- **Paper:** add new kinds in `lib/core/paper.dart` (`paperGeometry`), never separately in the painter and the PDF export. Format 2 added `cornell`/`staff` and `lh`; unknown kinds read as lined.
 - **Palm rejection** (`InputRouter`): touches are ignored while the pen is down or hovering, and within 500 ms after it lifts. Touches already down when the pen arrives are cancelled. Highlighters always paint under ink (`paintOrder`).
 - **UI style (calm "paper and ink"):** graphite neutrals and one restrained accent (default `#D9772B`), used only for the active tool and the primary action. Thin outlined Material icons, never `*_rounded`. Corner radii 8–10, Segoe UI Variable, colors from `AppTokens`/`ColorScheme` rather than hard-coded. No emoji as icons.
 
@@ -81,7 +86,7 @@ docs/superpowers/             design spec + original implementation plan
 - **In widget tests, file IO must run inside `tester.runAsync`.** Futures started in the fake clock never complete.
 - `PdfPageCache` evicts and disposes images (LRU, 24 pages). Don't keep `ui.Image` references from it across frames.
 - `PdfiumStamper` calls PDFium directly on the main isolate, while pdfrx renders on its own worker. Avoid exporting while pages are rendering.
-- Google Drive needs a user-supplied OAuth desktop client (README explains). There are no automated Drive tests, so verify Drive changes by hand.
+- Google Drive needs a user-supplied OAuth desktop client (docs/SYNC.md explains). There are no automated Drive tests, so verify Drive changes by hand.
 
 ## Known open issues (deferred, good next tasks)
 
@@ -94,7 +99,6 @@ docs/superpowers/             design spec + original implementation plan
 - Google Drive can end up with duplicate same-name files if two devices create the same path.
 - Merged notes never drop unused assets.
 - Markdown checkboxes can't be ticked by tapping; you edit `[ ]` → `[x]`.
-- The `pubspec.yaml` description is still the Flutter default.
 - Android port: needs its own secret store (DPAPI is Windows-only) and a Proton Drive route (the Android client has no synced folder).
 
 ## Working with the owner

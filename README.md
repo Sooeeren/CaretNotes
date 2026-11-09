@@ -1,90 +1,115 @@
 # CaretNotes
 
-A handwriting-first note app for pen and touch, inspired by Samsung Notes. Windows first, Android later (same Flutter codebase).
+**A handwriting-first notes app for pen and touch.** Write with a pressure-sensitive pen, type on the
+lines like in a paper notebook, sketch, highlight and drop in your lecture slides. Your notes stay
+on your computer as plain files, and sync through the cloud you already use.
 
-- **Pen:** pressure-sensitive pen, fineliner and pencil; highlighter that stays behind your writing; whole-stroke and partial eraser; S Pen side button (hold for eraser or selection); palm rejection.
-- **Hold to straighten:** keep the pen still at the end of a line and it snaps straight. Rough rectangles, circles, triangles and arrows become clean shapes. Keep moving the pen before lifting to adjust.
-- **Ruler:** move and rotate it with two fingers (snaps to 0°/45°/90°, shows the angle and cm marks). Lines drawn near its edge stick to it.
-- **Selection:** freehand lasso or box. Move, resize, rotate, recolor, copy, paste, duplicate, delete, or save as an image.
-- **Three layouts:** pages (A4/Letter), one endless page, or an infinite canvas.
-- **Paper:** blank, lined, grid, dots; adjustable spacing; white, cream, mint or dark paper. Set it for a whole note or a single page.
-- **Typed text with live Markdown:** headings, bold, italic, lists, checkboxes, code with highlighting, tables, quotes, links and LaTeX math (`$x^2$`).
-- **Images:** insert from a file, paste (Ctrl+V) or drag in. Move, resize, rotate, crop, put behind the ink.
-- **PDF:** import lecture slides and write on them, add blank pages in between.
-- **Export:** PDF (vector ink, real text, imported PDFs at original quality) or PNG/JPG.
-- **Folders:** nested, with colors and icons, sortable, drag and drop. Favorites, Recent, search, and Recently deleted (30 days).
-- **Sync, offline-first:** Proton Drive / OneDrive / Dropbox (through their desktop sync folder), Google Drive, or WebDAV (Nextcloud). When a note changed on two devices you choose: combine both, keep one, or keep both.
+![A lecture note in CaretNotes: typed text on lined paper, a hand-drawn vector sketch, a highlighted formula and a table](docs/screenshots/hero.png)
 
-## Build and run (Windows)
+<p align="center">
+  <a href="#get-caretnotes"><b>Get CaretNotes</b></a> ·
+  <a href="docs/FEATURES.md">Features</a> ·
+  <a href="docs/SYNC.md">Sync setup</a> ·
+  <a href="docs/SHORTCUTS.md">Shortcuts</a> ·
+  <a href="#documentation">Documentation</a>
+</p>
 
-1. Install [Flutter](https://docs.flutter.dev/get-started/install/windows) (3.32 or newer) and Visual Studio 2022 Build Tools with the **Desktop development with C++** workload.
-2. In this folder:
-   ```
-   flutter pub get
-   flutter run -d windows            # debug
-   flutter build windows --release   # build\windows\x64\runner\Release\caret_notes.exe
-   ```
-3. To share a build, zip the whole `build\windows\x64\runner\Release` folder. The `.exe` needs the DLLs and the `data` folder next to it.
+Built with Flutter, inspired by Samsung Notes. Windows first; Android comes later from the same code.
 
-Run the tests with `flutter test`.
+## Get CaretNotes
 
-Notes are stored in `%APPDATA%\dev.caretnotes\caret_notes\library` (Settings → Device & storage shows the exact path). Each note is one `.cnote` file, a zip with `note.json`, embedded images/PDFs and a thumbnail.
+There are no downloadable releases yet. Build it yourself in a few minutes with Flutter and the Visual
+Studio C++ tools: see [docs/BUILDING.md](docs/BUILDING.md).
 
-> Don't keep the project folder itself inside a synced cloud folder while building. Sync clients like Proton Drive can rename build files mid-build ("Name clash" copies).
-
-## Sync setup
-
-Sync runs when the app starts, every 3 minutes, when you close a note, and when you press **Sync now** in the sidebar. You can always write offline.
-
-### Proton Drive (or OneDrive / Dropbox)
-
-1. Install the provider's Windows app and sign in.
-2. Create a folder inside the synced drive, e.g. `Proton Drive\CaretNotes`.
-3. CaretNotes → Settings → Sync → **Synced folder** → choose that folder.
-4. On every other computer, choose the same folder.
-
-CaretNotes writes its files there and the Proton Drive app uploads them. If the Proton Drive app creates its own "Name clash" copies, CaretNotes recognizes them and asks you how to merge them.
-
-> Android: the Proton Drive Android app doesn't offer a synced folder, so Proton sync on Android will need another route. That will be decided when the Android version is built. Google Drive and WebDAV will work there directly.
-
-### Google Drive
-
-Google requires every app that isn't in a store to have its own sign-in client. It's free and takes about 5 minutes:
-
-1. Open <https://console.cloud.google.com/>, create a project (any name).
-2. **APIs & Services → Library**: enable **Google Drive API**.
-3. **APIs & Services → OAuth consent screen**: choose *External*, fill in the app name and your email, add yourself as a **test user**.
-4. **APIs & Services → Credentials → Create credentials → OAuth client ID** → application type **Desktop app**.
-5. Copy the **Client ID** and **Client secret** into CaretNotes → Settings → Sync → Google Drive, then press **Sign in with Google**.
-
-CaretNotes only gets access to the files it creates (`drive.file` scope), stored in a `CaretNotes` folder in your Drive. While the Google app is in "Testing" mode, Google signs you out about once a week. Press *Sign in* again when the sidebar asks. Publishing the consent screen removes that limit.
-
-### WebDAV (Nextcloud, ownCloud, NAS)
-
-Enter the folder's WebDAV address (Nextcloud: `https://<server>/remote.php/dav/files/<user>/CaretNotes`), your user name and an app password. The password is stored encrypted with Windows DPAPI.
-
-## Keyboard shortcuts in a note
-
-| Keys | Action |
+| Platform | Status |
 | --- | --- |
-| Ctrl+Z / Ctrl+Y (or Ctrl+Shift+Z) | Undo / redo |
-| Ctrl+C / Ctrl+X / Ctrl+V | Copy / cut / paste (also pastes images and text from other apps) |
-| Ctrl+D | Duplicate selection |
-| Delete | Delete selection |
-| Ctrl+= / Ctrl+- / Ctrl+0 | Zoom in / out / fit width |
-| Ctrl+mouse wheel | Zoom; wheel scrolls; Shift+wheel scrolls sideways |
-| Ctrl+S | Save now (it also saves automatically) |
+| Windows 10 / 11 | Works today; made for pen laptops and tablets (Surface, Galaxy Book, any Windows Ink pen) |
+| Android | Planned, from the same code base |
 
-Fingers scroll and pinch-zoom. Turn on **Draw with finger** if you have no pen. Hold the toolbar to drag it to the left or right side, or let it float.
+## How is CaretNotes different?
 
-## Project layout
+- **Pen first, keyboard welcome.** Ink is the main thing, with low lag, pressure and palm rejection.
+  When you'd rather type, the text sits on the paper's lines instead of floating in boxes.
+- **Your files, your cloud.** Every note is a single `.cnote` file in a normal folder. Sync goes
+  through Proton Drive, OneDrive or Dropbox (their desktop folder), Google Drive or WebDAV
+  (Nextcloud). There is no CaretNotes account or server.
+- **Never loses a note.** Saving is atomic, sync never deletes anything for good, and when a note
+  changed on two devices you choose: combine both, keep one, or keep both.
+- **Open source** under the MIT license.
 
-```
-lib/core/     platform-independent logic: model, file format, ink geometry, merge, sync, PDF export
-lib/ui/       Flutter UI: home screen, editor, sync, settings, export
-test/         unit and widget tests
-docs/         design and implementation plan
-```
+## Highlights
+
+- **Ink that feels right:** pressure-sensitive pen, fineliner and pencil; a highlighter that stays
+  behind your writing; whole-stroke and partial eraser; S Pen side button; palm rejection.
+- **Hold to straighten:** pause at the end of a line and it snaps straight. Rough rectangles,
+  circles, triangles and arrows become clean shapes.
+- **Ruler** you move and rotate with two fingers; lines drawn along it stick to it.
+- **Type on the lines** or in free text boxes, with live Markdown: headings, bold, lists, checkboxes,
+  code, tables and LaTeX math.
+- **Paper for every class:** lined, Cornell, grid, dots, music staff and more, in four paper colors.
+- **Pages, an endless page, or an infinite canvas.**
+- **PDF lecture slides:** import them, write on them, export again with vector ink and real text.
+- **Images:** paste, drag in, crop, rotate, put behind the ink.
+- **Library:** nested folders with colors and icons, favorites, search, and Recently deleted (30 days).
+
+## Typing on the lines
+
+Pick the text tool and click a line. Your text follows the ruling of the paper, so typed notes and
+handwriting share the same lines. Tap the text tool again to switch to free text boxes, for a
+label next to a sketch or a table.
+
+![Typing on lined paper with the formatting bar, and the text tool's "On lines / Text box" switch](docs/screenshots/text.png)
+
+## Paper templates
+
+**⋮ → Paper template…** shows a live preview of every paper. Set it for the whole note or just one
+page, pick the paper color and fine-tune the line spacing. Text you typed on the lines moves along.
+
+![The paper template picker with previews of blank, lined, Cornell, grid, dots and music staff paper](docs/screenshots/templates.png)
+
+## Library
+
+Folders nest as deep as you like and get their own color and icon. Every note shows a thumbnail of
+its first page. Search finds titles and typed text, and anything you delete stays in Recently
+deleted for 30 days.
+
+![The library: a folder tree in the sidebar and note thumbnails in a grid](docs/screenshots/library.png)
+
+## Looks
+
+A calm "paper and ink" design with one accent color, in light and dark. Dark paper keeps ink
+readable at night.
+
+![Dark mode with dark Cornell paper](docs/screenshots/dark.png)
+
+## Sync
+
+Sync runs when CaretNotes starts, every 3 minutes, when you close a note and when you press
+**Sync now**. You can always write offline. Supported:
+
+| Service | How |
+| --- | --- |
+| Proton Drive, OneDrive, Dropbox | Through the provider's synced folder on your PC |
+| Google Drive | Directly, with your own free sign-in client (5 minutes to set up) |
+| WebDAV (Nextcloud, ownCloud, NAS) | Directly; the password is stored encrypted |
+
+Setup for each, and how conflicts are handled: [docs/SYNC.md](docs/SYNC.md).
+
+## Documentation
+
+| | |
+| --- | --- |
+| [Features in detail](docs/FEATURES.md) | Pens, selection, typing, paper, layouts, PDFs, export, where notes are stored |
+| [Sync setup](docs/SYNC.md) | Proton Drive / OneDrive / Dropbox, Google Drive, WebDAV; conflicts |
+| [Keyboard shortcuts](docs/SHORTCUTS.md) | Editor shortcuts and Markdown while typing |
+| [Building](docs/BUILDING.md) | Toolchain, building, tests, demo profiles, screenshots |
+| [Design spec](docs/superpowers/specs/2026-11-08-caretnotes-design.md) | What the app must do and why |
+
+## Made with AI
+
+CaretNotes is written with AI coding assistants, steered and tested by its maintainer. Working on
+CaretNotes with an AI assistant? Start with [AGENTS.md](AGENTS.md): it explains the project, its
+priorities and its conventions.
 
 ## License
 
