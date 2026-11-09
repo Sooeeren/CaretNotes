@@ -15,7 +15,21 @@ flutter run -d windows            # debug
 flutter build windows --release   # build\windows\x64\runner\Release\caret_notes.exe
 ```
 
-To share a build, zip the whole `build\windows\x64\runner\Release` folder. The `.exe` needs the DLLs and the `data` folder next to it.
+The `.exe` there needs the DLLs and the `data` folder next to it. To share a build as **one file**:
+
+```
+powershell -ExecutionPolicy Bypass -File tool\single_exe\build.ps1   # build\single_exe\CaretNotes.exe
+```
+
+That packs the Release folder (plus the Visual C++ runtime DLLs) into a small launcher (`tool/single_exe/launcher.cpp`). On first start it unpacks once to `%LOCALAPPDATA%\CaretNotes\app\<build id>` and starts the app from there; later starts reuse it. Your notes stay where they always are.
+
+## Android
+
+```
+flutter build apk --release       # build\app\outputs\flutter-apk\app-release.apk
+```
+
+Needs the Android SDK (Android Studio or the command-line tools). Release builds are signed with the debug key for now.
 
 A release build fails with `LNK1104` while `caret_notes.exe` is still running. Close the app first.
 

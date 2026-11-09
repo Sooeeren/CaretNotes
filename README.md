@@ -18,13 +18,17 @@ Built with Flutter, inspired by Samsung Notes. Windows first; Android comes late
 
 ## Get CaretNotes
 
-There are no downloadable releases yet. Build it yourself in a few minutes with Flutter and the Visual
-Studio C++ tools: see [docs/BUILDING.md](docs/BUILDING.md).
+Download the latest version from [Releases](https://github.com/Sooeeren/CaretNotes/releases/latest):
+
+- **Windows:** `CaretNotes.exe`, a single file. Just run it; nothing to install or unzip.
+- **Android:** `CaretNotes.apk`. Allow installing from unknown sources, then open it.
+
+Or build it yourself with Flutter: see [docs/BUILDING.md](docs/BUILDING.md).
 
 | Platform | Status |
 | --- | --- |
 | Windows 10 / 11 | Works today; made for pen laptops and tablets (Surface, Galaxy Book, any Windows Ink pen) |
-| Android | Planned, from the same code base |
+| Android | Early preview: builds from the same code, not yet tuned for phones and tablets |
 
 ## How is CaretNotes different?
 

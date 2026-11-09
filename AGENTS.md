@@ -20,6 +20,8 @@ flutter test test/core/sync_test.dart    # one file
 flutter run -d windows                   # debug
 flutter build windows --release          # build\windows\x64\runner\Release\caret_notes.exe (+ DLLs + data\ next to it)
 dart run tool/seed_demo.dart <dir>/library   # fill a throwaway demo library
+powershell -File tool/single_exe/build.ps1   # one-file Windows exe: build\single_exe\CaretNotes.exe (after the release build)
+flutter build apk --release              # Android APK (AGP 9.1 / Gradle 9.3.1 / Kotlin 2.4, debug-signed)
 flutter test tool/screenshots/readme_screenshots_test.dart   # re-render docs/screenshots/*.png
 ```
 
