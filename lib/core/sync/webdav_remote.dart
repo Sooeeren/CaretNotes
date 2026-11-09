@@ -57,22 +57,22 @@ class WebDavRemote implements RemoteStore {
       _check(r, 'list');
       final doc = XmlDocument.parse(await r.stream.bytesToString());
       final basePath = Uri.decodeComponent(baseUrl.path);
-      for (final resp in doc.findAllElements('response', namespace: 'DAV:')) {
-        final href = Uri.decodeComponent(Uri.parse(resp.findElements('href', namespace: 'DAV:').first.innerText).path);
+      for (final resp in doc.findAllElements('response', namespaceUri: 'DAV:')) {
+        final href = Uri.decodeComponent(Uri.parse(resp.findElements('href', namespaceUri: 'DAV:').first.innerText).path);
         if (!href.startsWith(basePath)) continue;
         var child = href.substring(basePath.length);
         if (child.endsWith('/')) child = child.substring(0, child.length - 1);
         if (child == rel || child.isEmpty) continue;
         final name = child.split('/').last;
         if (name.startsWith('.') && name != '.folder.json') continue;
-        final prop = resp.findAllElements('prop', namespace: 'DAV:').first;
-        final isDir = prop.findAllElements('collection', namespace: 'DAV:').isNotEmpty;
+        final prop = resp.findAllElements('prop', namespaceUri: 'DAV:').first;
+        final isDir = prop.findAllElements('collection', namespaceUri: 'DAV:').isNotEmpty;
         if (isDir) {
           await walk(child);
         } else {
-          final etag = prop.findAllElements('getetag', namespace: 'DAV:').firstOrNull?.innerText ?? '';
-          final lm = prop.findAllElements('getlastmodified', namespace: 'DAV:').firstOrNull?.innerText ?? '';
-          final len = int.tryParse(prop.findAllElements('getcontentlength', namespace: 'DAV:').firstOrNull?.innerText ?? '') ?? 0;
+          final etag = prop.findAllElements('getetag', namespaceUri: 'DAV:').firstOrNull?.innerText ?? '';
+          final lm = prop.findAllElements('getlastmodified', namespaceUri: 'DAV:').firstOrNull?.innerText ?? '';
+          final len = int.tryParse(prop.findAllElements('getcontentlength', namespaceUri: 'DAV:').firstOrNull?.innerText ?? '') ?? 0;
           out.add(RemoteEntry(child, etag.isNotEmpty ? etag : '$lm:$len', len));
         }
       }

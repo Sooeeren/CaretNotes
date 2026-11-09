@@ -15,7 +15,7 @@ The top priorities:
 ```bash
 flutter pub get
 flutter analyze                          # must report "No issues found!"
-flutter test                             # whole suite must pass (130+ tests)
+flutter test                             # whole suite must pass (135+ tests)
 flutter test test/core/sync_test.dart    # one file
 flutter run -d windows                   # debug
 flutter build windows --release          # build\windows\x64\runner\Release\caret_notes.exe (+ DLLs + data\ next to it)
@@ -23,7 +23,7 @@ dart run tool/seed_demo.dart <dir>/library   # fill a throwaway demo library
 flutter test tool/screenshots/readme_screenshots_test.dart   # re-render docs/screenshots/*.png
 ```
 
-Toolchain: Flutter 3.47 / Dart 3.13 and Visual Studio (2022 Build Tools or newer, C++ workload). Under Flutter 3.47, `pdfrx` must be ≥ 2.12 and `image` < 4.11 (4.11 needs an `archive` that conflicts with `pdf` + `xml` 6). The ATL component is **not** installed, so don't add plugins that need ATL (that's why `flutter_secure_storage` was dropped).
+Toolchain: Flutter 3.47 / Dart 3.13 and Visual Studio (2022 Build Tools or newer, C++ workload). Under Flutter 3.47, `pdfrx` must be ≥ 2.12. `win32` 6 returns `Win32Result` (check `.value`) and takes `PCWSTR` (`arena.pcwstr(...)`). Held back by other packages: `desktop_drop` 0.8 (0.9 needs `cross_file` 0.4, `file_selector` still pins 0.3) and `xml` 7.0.1 (`flutter_svg` caps it). The ATL component is **not** installed, so don't add plugins that need ATL (that's why `flutter_secure_storage` was dropped).
 
 ### Running against a separate profile
 

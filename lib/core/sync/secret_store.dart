@@ -47,11 +47,11 @@ class SecretStore {
         ..pbData = buf;
       final output = arena<win.CRYPT_INTEGER_BLOB>();
       final ok = encrypt
-          ? win.CryptProtectData(input, nullptr, nullptr, nullptr, nullptr, 0, output)
-          : win.CryptUnprotectData(input, nullptr, nullptr, nullptr, nullptr, 0, output);
-      if (ok == 0) throw StateError('DPAPI failed');
+          ? win.CryptProtectData(input, null, null, null, 0, output).value
+          : win.CryptUnprotectData(input, null, null, null, 0, output).value;
+      if (!ok) throw StateError('DPAPI failed');
       final out = Uint8List.fromList(output.ref.pbData.asTypedList(output.ref.cbData));
-      win.LocalFree(output.ref.pbData);
+      win.LocalFree(win.HLOCAL(output.ref.pbData));
       return out;
     });
   }

@@ -9,11 +9,11 @@ import 'package:win32/win32.dart' as win;
 Future<void> replaceFile(File from, String to) async {
   if (Platform.isWindows) {
     final ok = using((arena) {
-      final a = from.absolute.path.toNativeUtf16(allocator: arena);
-      final b = File(to).absolute.path.toNativeUtf16(allocator: arena);
-      return win.MoveFileEx(a, b, 0x1 /* REPLACE_EXISTING */ | 0x8 /* WRITE_THROUGH */);
+      final a = arena.pcwstr(from.absolute.path);
+      final b = arena.pcwstr(File(to).absolute.path);
+      return win.MoveFileEx(a, b, win.MOVEFILE_REPLACE_EXISTING | win.MOVEFILE_WRITE_THROUGH).value;
     });
-    if (ok != 0) return;
+    if (ok) return;
     throw FileSystemException('Could not replace file', to);
   }
   await from.rename(to);

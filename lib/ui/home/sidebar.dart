@@ -53,7 +53,7 @@ class _SidebarState extends State<Sidebar> {
             mainAxisAlignment: widget.compact ? MainAxisAlignment.center : MainAxisAlignment.start,
             children: [
               if (!widget.compact) SizedBox(width: 6 + indent),
-              if (leading != null) leading,
+              ?leading,
               Icon(icon, size: 18, color: iconColor ?? (selected ? t.colorScheme.onSurface : tk.muted)),
               if (!widget.compact) ...[
                 const SizedBox(width: 10),

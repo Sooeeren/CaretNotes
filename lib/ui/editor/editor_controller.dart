@@ -60,12 +60,12 @@ class _Op {
 
 class EditorController extends ChangeNotifier {
   EditorController({
-    required Note note,
+    required this._note,
     required this.relPath,
     required this.store,
     required this.deviceName,
     this.autosave = true,
-  }) : _note = note;
+  });
 
   Note _note;
   Note get note => _note;
