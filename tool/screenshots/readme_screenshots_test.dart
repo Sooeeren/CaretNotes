@@ -206,9 +206,9 @@ void main() {
     await _settle(tester);
     await _openEditor(tester, env.notes['lecture']!);
     // Pick the text tool and open its options panel...
-    await tester.tap(find.byTooltip('Type on lines (tap again for text box)'));
+    await tester.tap(find.byTooltip('Type on the lines (tap again for options)'));
     await tester.pump();
-    await tester.tap(find.byTooltip('Type on lines (tap again for text box)'));
+    await tester.tap(find.byTooltip('Type on the lines (tap again for options)'));
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.byType(TextOptions), findsOneWidget);
     // ...and show the "Useful facts" block being edited, with its formatting bar.

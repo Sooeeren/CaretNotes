@@ -36,6 +36,7 @@ Toolchain: Flutter 3.47 / Dart 3.13 and Visual Studio (2022 Build Tools or newer
 ```
 lib/core/   pure Dart, NO Flutter widget imports (portable, unit-testable)
   geometry.dart               Vec2, RectD, Affine, rdp, pointInPolygon
+  find.dart                   find typed text in a note (markdown-insensitive), for the editor's find bar
   paper.dart                  paper geometry (lines/dots per template, shared by screen + PDF), text-on-lines frames, presets
   model/                      Note, NotePage, Template, elements (StrokeEl/TextEl/ImageEl), FolderMeta
   format/note_codec.dart      .cnote = zip: note.json + assets/<id> + thumb.png
@@ -50,7 +51,7 @@ lib/ui/     Flutter UI
   app.dart, wiring.dart       shell; features plug in through hooks/routes in wiring.dart
   theme.dart                  design tokens (AppTokens: desk, hairline, muted, selectedFill)
   home/                       sidebar, folder grid, dialogs
-  editor/                     EditorController (state + undo), CanvasView (input + painting), toolbar, ruler, text boxes, images, PDF cache
+  editor/                     EditorController (state + undo, read mode), CanvasView (input + painting), toolbar.dart (NoteBar on top + floating ToolPill), find_bar, ruler, text boxes, images, PDF cache
   sync/                       SyncController, status tile, conflict dialog
   settings_screen.dart, export_dialog.dart
 test/core, test/ui            unit + widget tests
@@ -78,10 +79,12 @@ docs/superpowers/             design spec + original implementation plan
 - **Text on lines:** a `TextEl` with `lineHeight` set is typed on the paper's lines (`TextMode.lines`); without it, it's a free text box. Every line of ruled text is exactly `lineHeight` tall (forced strut) and shifted so baselines sit on the ruled lines (`ruledBaselineShift`). The screen widget, the painter and the PDF export must agree; moves snap to the lines and template changes refit it (`fitTextToLines`).
 - **Paper:** add new kinds in `lib/core/paper.dart` (`paperGeometry`), never separately in the painter and the PDF export. Format 2 added `cornell`/`staff` and `lh`; unknown kinds read as lined.
 - **Palm rejection** (`InputRouter`): touches are ignored while the pen is down or hovering, and within 500 ms after it lifts. Touches already down when the pen arrives are cancelled. Highlighters always paint under ink (`paintOrder`).
+- **Editor layout (Samsung Notes–style split):** note actions live in the top `NoteBar`; only drawing tools go in the `ToolPill`. Each tool's settings (type, size, colors) belong in its tap-again panel (`tool_options.dart`), not in the bar. Insert things via the `+` menu, page actions via the pages button; keep `⋮` short.
 - **UI style (calm "paper and ink"):** graphite neutrals and one restrained accent (default `#D9772B`), used only for the active tool and the primary action. Thin outlined Material icons, never `*_rounded`. Corner radii 8–10, Segoe UI Variable, colors from `AppTokens`/`ColorScheme` rather than hard-coded. No emoji as icons.
 
 ## Gotchas
 
+- **Some Material icons vanish in release builds** (icon tree-shaking drops their glyphs; e.g. `keyboard_outlined`, `chrome_reader_mode_outlined`) while tests and debug show them. After adding an icon, check the release exe.
 - **A release build fails with `LNK1104`** when `caret_notes.exe` is running. Close the app first.
 - **In widget tests, file IO must run inside `tester.runAsync`.** Futures started in the fake clock never complete.
 - `PdfPageCache` evicts and disposes images (LRU, 24 pages). Don't keep `ui.Image` references from it across frames.

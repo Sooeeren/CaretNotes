@@ -48,6 +48,9 @@ class CanvasHandle {
   void zoomBy(double f) => _s?._zoomAt(_s!._viewSize.center(Offset.zero), f);
   void fit() => _s?._fit();
   void showPage(int i) => _s?._showPage(i);
+
+  /// Scrolls so [r] (page coords of page [pageIndex]) sits in the middle of the view.
+  void reveal(int pageIndex, RectD r) => _s?._reveal(pageIndex, r);
   double get scale => _s?._scale ?? 1;
   Vec2? get visibleCenterLocal => _s?._centerLocal();
   String? get visiblePageId => _s?._visiblePageId();
@@ -61,6 +64,9 @@ class CanvasView extends StatefulWidget {
   final int imagesVersion;
   final CanvasHandle handle;
   final ValueNotifier<RulerGeom?> ruler;
+
+  /// Extra room above the first page, so tools docked at the top don't cover it.
+  final double topInset;
   const CanvasView({
     super.key,
     required this.controller,
@@ -70,6 +76,7 @@ class CanvasView extends StatefulWidget {
     required this.imagesVersion,
     required this.handle,
     required this.ruler,
+    this.topInset = 0,
   });
 
   @override
@@ -130,6 +137,7 @@ class _CanvasViewState extends State<CanvasView> {
   // ---------- layout ----------
 
   bool get _isCanvas => note.layout == NoteLayout.canvas;
+  double get _top => 24 + widget.topInset;
 
   List<Offset> get _origins {
     if (_isCanvas) return [Offset.zero];
@@ -191,7 +199,7 @@ class _CanvasViewState extends State<CanvasView> {
       _offset = const Offset(40, 40);
     } else {
       _scale = ((_viewSize.width - 48) / _docWidth).clamp(_minScale, 1.25);
-      _offset = Offset((_viewSize.width - _docWidth * _scale) / 2, 24);
+      _offset = Offset((_viewSize.width - _docWidth * _scale) / 2, _top);
     }
     if (rebuild) setState(() {});
   }
@@ -199,7 +207,16 @@ class _CanvasViewState extends State<CanvasView> {
   void _showPage(int i) {
     if (_isCanvas || i < 0 || i >= note.pages.length) return;
     final o = _origins[i];
-    _offset = Offset(_offset.dx, 24 - o.dy * _scale);
+    _offset = Offset(_offset.dx, _top - o.dy * _scale);
+    _clamp();
+    setState(() {});
+  }
+
+  void _reveal(int i, RectD r) {
+    if (i < 0 || i >= note.pages.length || _viewSize.isEmpty) return;
+    final o = _isCanvas ? Offset.zero : _origins[i];
+    final center = Offset(o.dx + (r.left + r.right) / 2, o.dy + (r.top + r.bottom) / 2);
+    _offset = _viewSize.center(Offset.zero) - center * _scale;
     _clamp();
     setState(() {});
   }
@@ -220,8 +237,8 @@ class _CanvasViewState extends State<CanvasView> {
     } else {
       dx = dx.clamp(_viewSize.width - w - 24, 24);
     }
-    final minY = math.min(24.0, _viewSize.height - h - 140); // room for the "Add page" button
-    dy = dy.clamp(minY, 24.0);
+    final minY = math.min(_top, _viewSize.height - h - 140); // room for the "Add page" button
+    dy = dy.clamp(minY, _top);
     _offset = Offset(dx, dy);
   }
 
@@ -296,11 +313,13 @@ class _CanvasViewState extends State<CanvasView> {
       FocusManager.instance.primaryFocus?.unfocus();
       c.finishTextEdit();
     }
-    var action = switch (role) {
-      InputRole.erase => _Action.erase,
-      InputRole.sideButton => widget.settings.sideButton == SideButtonAction.eraser ? _Action.erase : _Action.select,
-      _ => _actionForTool(),
-    };
+    var action = c.readOnly
+        ? _Action.pan
+        : switch (role) {
+            InputRole.erase => _Action.erase,
+            InputRole.sideButton => widget.settings.sideButton == SideButtonAction.eraser ? _Action.erase : _Action.select,
+            _ => _actionForTool(),
+          };
     final (pi, local) = _hitPage(e.localPosition);
     final pg = note.pages[pi];
     if (action == _Action.select && c.hasSelection) {
@@ -419,8 +438,9 @@ class _CanvasViewState extends State<CanvasView> {
         }
         c.previewTransform(t);
       case _Action.text:
-      case _Action.pan:
         break;
+      case _Action.pan:
+        _panBy(e.delta);
     }
   }
 
@@ -728,7 +748,7 @@ class _CanvasViewState extends State<CanvasView> {
             _panBy(e.panDelta);
           },
           child: MouseRegion(
-            cursor: switch (c.tool) {
+            cursor: c.readOnly ? SystemMouseCursors.grab : switch (c.tool) {
               EditorTool.text => SystemMouseCursors.text,
               EditorTool.select => SystemMouseCursors.precise,
               _ => SystemMouseCursors.precise,
@@ -739,6 +759,24 @@ class _CanvasViewState extends State<CanvasView> {
       ));
 
       children.addAll(chrome);
+      final hit = c.findHit;
+      if (hit != null && hit.pageIndex < note.pages.length && note.pages[hit.pageIndex].id == hit.pageId) {
+        final o = _isCanvas ? Offset.zero : _origins[hit.pageIndex];
+        final tl = _toScreen(o + Offset(hit.rect.left, hit.rect.top));
+        final br = _toScreen(o + Offset(hit.rect.right, hit.rect.bottom));
+        children.add(Positioned.fromRect(
+          rect: Rect.fromPoints(tl, br).inflate(4),
+          child: IgnorePointer(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
+                border: Border.all(color: Theme.of(context).colorScheme.primary, width: 2),
+                borderRadius: BorderRadius.circular(6),
+              ),
+            ),
+          ),
+        ));
+      }
       children.add(Positioned(right: 16, bottom: 14, child: _statusPill(context)));
       if (editor != null) children.add(editor!);
       if (c.hasSelection && c.editingTextId == null) children.add(_selectionBar(context));

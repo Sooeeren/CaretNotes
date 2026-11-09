@@ -15,30 +15,131 @@ ToolbarDock dockFor(Offset pos, Size area, {double edge = 90}) {
   return ToolbarDock.floating;
 }
 
-class EditorToolbar extends StatelessWidget {
+/// The bar across the top: the note itself (back, title) and what you do with it
+/// (undo, find, read mode, insert, pages, more). Drawing tools live in [ToolPill].
+class NoteBar extends StatelessWidget {
+  final EditorController c;
+  final VoidCallback onBack;
+  final VoidCallback onRename;
+  final VoidCallback onFind;
+  final bool finding;
+  final Widget insertMenu;
+  final Widget? pagesButton;
+  final Widget moreMenu;
+
+  const NoteBar({
+    super.key,
+    required this.c,
+    required this.onBack,
+    required this.onRename,
+    required this.onFind,
+    required this.finding,
+    required this.insertMenu,
+    required this.pagesButton,
+    required this.moreMenu,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context);
+    return Material(
+      color: t.colorScheme.surfaceContainerLow,
+      child: SizedBox(
+        height: 52,
+        child: Row(
+          children: [
+            const SizedBox(width: 6),
+            IconButton(tooltip: 'Back to notes', icon: const Icon(Icons.arrow_back), onPressed: onBack),
+            Expanded(
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(6),
+                  onTap: onRename,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(c.note.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: t.textTheme.titleSmall),
+                        Text(_subtitle(), maxLines: 1, style: t.textTheme.bodySmall?.copyWith(fontSize: 11)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            IconButton(tooltip: 'Undo (Ctrl+Z)', icon: const Icon(Icons.undo), onPressed: c.canUndo && !c.readOnly ? c.undo : null),
+            IconButton(tooltip: 'Redo (Ctrl+Y)', icon: const Icon(Icons.redo), onPressed: c.canRedo && !c.readOnly ? c.redo : null),
+            const SizedBox(height: 22, child: VerticalDivider(width: 17)),
+            BarToggle(icon: Icons.search, tooltip: 'Find in note (Ctrl+F)', on: finding, onTap: onFind),
+            BarToggle(
+              icon: Icons.visibility_outlined,
+              tooltip: c.readOnly ? 'Read mode is on: tap to write again' : 'Read mode (only scroll, no accidental marks)',
+              on: c.readOnly,
+              onTap: c.toggleReadOnly,
+            ),
+            insertMenu,
+            ?pagesButton,
+            moreMenu,
+            const SizedBox(width: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _subtitle() {
+    final n = c.note;
+    final kind = switch (n.layout) {
+      NoteLayout.paged => n.pages.length == 1 ? '1 page' : '${n.pages.length} pages',
+      NoteLayout.endless => 'Endless page',
+      NoteLayout.canvas => 'Canvas',
+    };
+    return c.readOnly ? '$kind · Read mode' : kind;
+  }
+}
+
+class BarToggle extends StatelessWidget {
+  final IconData icon;
+  final String tooltip;
+  final bool on;
+  final VoidCallback onTap;
+  const BarToggle({super.key, required this.icon, required this.tooltip, required this.on, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context);
+    return IconButton(
+      tooltip: tooltip,
+      style: IconButton.styleFrom(
+        backgroundColor: on ? AppTokens.of(context).selectedFill : null,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+      icon: Icon(icon, color: on ? t.colorScheme.primary : null),
+      onPressed: onTap,
+    );
+  }
+}
+
+/// The drawing tools as a small rounded pill over the page. Tap a tool to pick it,
+/// tap it again for its options (type, size, colors). Long-press and drag to move
+/// it; drop near an edge to dock it there.
+class ToolPill extends StatelessWidget {
   final EditorController c;
   final AppSettings settings;
   final Axis axis;
-  final bool compact;
-  final VoidCallback onBack;
-  final VoidCallback onInsertImage;
-  final VoidCallback onRename;
-  final Widget moreMenu;
   final void Function(Offset global) onDragStart;
   final void Function(Offset global) onDragUpdate;
   final void Function(Offset global) onDragEnd;
   final ValueChanged<int> onPenColorsChanged;
 
-  const EditorToolbar({
+  const ToolPill({
     super.key,
     required this.c,
     required this.settings,
     required this.axis,
-    this.compact = false,
-    required this.onBack,
-    required this.onInsertImage,
-    required this.onRename,
-    required this.moreMenu,
     required this.onDragStart,
     required this.onDragUpdate,
     required this.onDragEnd,
@@ -48,14 +149,13 @@ class EditorToolbar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context);
+    final tk = AppTokens.of(context);
     final horizontal = axis == Axis.horizontal;
-    final floating = settings.toolbarDock == ToolbarDock.floating;
-    final wide = horizontal && !compact && settings.toolbarDock == ToolbarDock.top;
 
     Widget tool(EditorTool tl, IconData icon, String tip, {Color? accent, Widget Function()? options}) {
-      final selected = c.tool == tl;
+      final selected = c.tool == tl && !c.readOnly;
       return Builder(
-        builder: (ctx) => _ToolButton(
+        builder: (ctx) => ToolButton(
           icon: icon,
           tooltip: tip,
           selected: selected,
@@ -77,148 +177,73 @@ class EditorToolbar extends StatelessWidget {
       _ => Icons.edit_outlined,
     };
 
-    final back = IconButton(tooltip: 'Back to notes', icon: const Icon(Icons.arrow_back), onPressed: onBack);
-    final titleBlock = InkWell(
-      borderRadius: BorderRadius.circular(6),
-      onTap: onRename,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(c.note.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: t.textTheme.titleSmall),
-          Text(_subtitle(), maxLines: 1, style: t.textTheme.bodySmall?.copyWith(fontSize: 11)),
-        ]),
-      ),
-    );
-    final history = <Widget>[
-      IconButton(tooltip: 'Undo (Ctrl+Z)', icon: const Icon(Icons.undo), onPressed: c.canUndo ? c.undo : null),
-      IconButton(tooltip: 'Redo (Ctrl+Y)', icon: const Icon(Icons.redo), onPressed: c.canRedo ? c.redo : null),
-      moreMenu,
-    ];
-
     final tools = <Widget>[
-      tool(EditorTool.pen, penIcon, 'Pen (tap again for options)',
-          accent: Color(c.penColor), options: () => PenOptions(c: c, settings: settings, onColorsChanged: onPenColorsChanged)),
-      tool(EditorTool.highlighter, Icons.border_color_outlined, 'Highlighter', accent: Color(c.hlColor), options: () => HighlighterOptions(c: c)),
-      tool(EditorTool.eraser, Icons.auto_fix_normal_outlined, 'Eraser', options: () => EraserOptions(c: c)),
-      tool(EditorTool.select, c.selectMode == SelectMode.lasso ? Icons.gesture : Icons.highlight_alt, 'Select (lasso / box)',
-          options: () => SelectOptions(c: c)),
-      _ToolButton(
+      tool(
+        EditorTool.text,
+        c.textMode == TextMode.lines ? Icons.keyboard_alt_outlined : Icons.text_fields,
+        c.textMode == TextMode.lines ? 'Type on the lines (tap again for options)' : 'Text box (tap again for options)',
+        options: () => TextOptions(c: c),
+      ),
+      horizontal ? const SizedBox(height: 22, child: VerticalDivider(width: 13)) : const SizedBox(width: 22, child: Divider(height: 13)),
+      tool(
+        EditorTool.pen,
+        penIcon,
+        'Pen (tap again for type, size and color)',
+        accent: Color(c.penColor),
+        options: () => PenOptions(c: c, settings: settings, onColorsChanged: onPenColorsChanged),
+      ),
+      tool(
+        EditorTool.highlighter,
+        Icons.border_color_outlined,
+        'Highlighter (tap again for color)',
+        accent: Color(c.hlColor),
+        options: () => HighlighterOptions(c: c),
+      ),
+      tool(EditorTool.eraser, Icons.auto_fix_normal_outlined, 'Eraser (tap again for options)', options: () => EraserOptions(c: c)),
+      tool(
+        EditorTool.select,
+        c.selectMode == SelectMode.lasso ? Icons.gesture : Icons.highlight_alt,
+        'Select (tap again for lasso / box)',
+        options: () => SelectOptions(c: c),
+      ),
+      ToolButton(
         icon: Icons.straighten,
         tooltip: 'Ruler (move & rotate with two fingers)',
         selected: c.rulerVisible,
         onTap: () => c.update(() => c.rulerVisible = !c.rulerVisible),
       ),
-      tool(
-        EditorTool.text,
-        c.textMode == TextMode.lines ? Icons.notes : Icons.text_fields,
-        c.textMode == TextMode.lines ? 'Type on lines (tap again for text box)' : 'Text box (tap again for typing on lines)',
-        options: () => TextOptions(c: c),
-      ),
-      _ToolButton(icon: Icons.add_photo_alternate_outlined, tooltip: 'Insert image', selected: false, onTap: onInsertImage),
-      if (!compact || !horizontal) ..._quickColors(horizontal),
     ];
 
-    Widget content;
-    if (wide) {
-      // Title on the left, tools centered, history on the right.
-      content = SizedBox(
-        height: 52,
-        child: Row(children: [
-          const SizedBox(width: 6),
-          back,
-          ConstrainedBox(constraints: const BoxConstraints(maxWidth: 240), child: titleBlock),
-          Expanded(
-            child: Center(
-              child: SingleChildScrollView(scrollDirection: Axis.horizontal, child: Row(mainAxisSize: MainAxisSize.min, children: tools)),
-            ),
-          ),
-          ...history,
-          const SizedBox(width: 8),
-        ]),
-      );
-    } else {
-      final all = <Widget>[back, _sep(horizontal), ...tools, _sep(horizontal), ...history];
-      content = Padding(
-        padding: EdgeInsets.symmetric(horizontal: horizontal ? 6 : 4, vertical: horizontal ? 4 : 8),
-        child: horizontal
-            ? SingleChildScrollView(scrollDirection: Axis.horizontal, child: Row(mainAxisSize: MainAxisSize.min, children: all))
-            : SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: all)),
-      );
-    }
-
-    final bar = Material(
+    final pill = Material(
       color: t.colorScheme.surfaceContainerLow,
-      elevation: floating ? 8 : 0,
-      shadowColor: Colors.black45,
-      shape: floating ? RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: t.dividerColor)) : null,
-      child: content,
+      elevation: 6,
+      shadowColor: Colors.black38,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(26),
+        side: BorderSide(color: tk.hairline),
+      ),
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: horizontal ? 8 : 4, vertical: horizontal ? 4 : 8),
+        child: horizontal ? Row(mainAxisSize: MainAxisSize.min, children: tools) : Column(mainAxisSize: MainAxisSize.min, children: tools),
+      ),
     );
 
     return GestureDetector(
       onLongPressStart: (d) => onDragStart(d.globalPosition),
       onLongPressMoveUpdate: (d) => onDragUpdate(d.globalPosition),
       onLongPressEnd: (d) => onDragEnd(d.globalPosition),
-      child: bar,
+      child: AnimatedOpacity(opacity: c.readOnly ? 0.55 : 1, duration: const Duration(milliseconds: 150), child: pill),
     );
   }
-
-  String _subtitle() {
-    final n = c.note;
-    return switch (n.layout) {
-      NoteLayout.paged => n.pages.length == 1 ? '1 page' : '${n.pages.length} pages',
-      NoteLayout.endless => 'Endless page',
-      NoteLayout.canvas => 'Canvas',
-    };
-  }
-
-  List<Widget> _quickColors(bool horizontal) {
-    if (c.tool != EditorTool.pen && c.tool != EditorTool.highlighter) return const [];
-    final hl = c.tool == EditorTool.highlighter;
-    final colors = hl ? highlighterColors : settings.penColors.take(5).toList();
-    final current = hl ? c.hlColor : c.penColor;
-    return [
-      _sep(horizontal),
-      for (final col in colors)
-        Builder(
-          builder: (context) => InkWell(
-            customBorder: const CircleBorder(),
-            onTap: () => c.update(() => hl ? c.hlColor = col : c.penColor = col),
-            child: Padding(
-              padding: const EdgeInsets.all(4),
-              child: Container(
-                width: 24,
-                height: 24,
-                padding: const EdgeInsets.all(3),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: col == current ? Theme.of(context).colorScheme.onSurface : Colors.transparent, width: 1.5),
-                ),
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: Color(col),
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.black.withValues(alpha: 0.12)),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-    ];
-  }
-
-  Widget _sep(bool horizontal) => horizontal
-      ? const SizedBox(height: 22, child: VerticalDivider(width: 17))
-      : const SizedBox(width: 22, child: Divider(height: 17));
 }
 
-class _ToolButton extends StatelessWidget {
+class ToolButton extends StatelessWidget {
   final IconData icon;
   final String tooltip;
   final bool selected;
   final Color? accent;
   final VoidCallback onTap;
-  const _ToolButton({required this.icon, required this.tooltip, required this.selected, this.accent, required this.onTap});
+  const ToolButton({super.key, required this.icon, required this.tooltip, required this.selected, this.accent, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -229,21 +254,28 @@ class _ToolButton extends StatelessWidget {
         padding: const EdgeInsets.all(1.5),
         child: Material(
           color: selected ? AppTokens.of(context).selectedFill : Colors.transparent,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          shape: const CircleBorder(),
           child: InkWell(
-            borderRadius: BorderRadius.circular(8),
+            customBorder: const CircleBorder(),
             onTap: onTap,
             child: SizedBox(
-              width: 38,
-              height: 38,
-              child: Stack(alignment: Alignment.center, children: [
-                Icon(icon, size: 20, color: selected ? t.colorScheme.primary : t.colorScheme.onSurfaceVariant),
-                if (accent != null)
-                  Positioned(
-                    bottom: 4,
-                    child: Container(width: 12, height: 2, decoration: BoxDecoration(color: accent, borderRadius: BorderRadius.circular(1))),
-                  ),
-              ]),
+              width: 40,
+              height: 40,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Icon(icon, size: 20, color: selected ? t.colorScheme.primary : t.colorScheme.onSurfaceVariant),
+                  if (accent != null)
+                    Positioned(
+                      bottom: 5,
+                      child: Container(
+                        width: 12,
+                        height: 3,
+                        decoration: BoxDecoration(color: accent, borderRadius: BorderRadius.circular(1.5)),
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
         ),

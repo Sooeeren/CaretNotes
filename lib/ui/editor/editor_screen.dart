@@ -18,6 +18,7 @@ import '../menu.dart';
 import 'canvas_view.dart';
 import 'editor_controller.dart';
 import 'editor_shortcuts.dart';
+import 'find_bar.dart';
 import 'image_box.dart';
 import 'page_strip.dart';
 import 'painters.dart';
@@ -52,6 +53,7 @@ class _EditorScreenState extends State<EditorScreen> {
   final _handle = CanvasHandle();
   final _focus = FocusNode();
   bool _showPages = false;
+  bool _finding = false;
   Offset? _dragPos;
   final _areaKey = GlobalKey();
   bool _closing = false;
@@ -234,22 +236,29 @@ class _EditorScreenState extends State<EditorScreen> {
     return Vec2.zero;
   }
 
-  Map<ShortcutActivator, VoidCallback> _shortcuts(EditorController c) => {
-        const SingleActivator(LogicalKeyboardKey.keyZ, control: true): c.undo,
-        const SingleActivator(LogicalKeyboardKey.keyY, control: true): c.redo,
-        const SingleActivator(LogicalKeyboardKey.keyZ, control: true, shift: true): c.redo,
-        const SingleActivator(LogicalKeyboardKey.keyC, control: true): c.copySelection,
-        const SingleActivator(LogicalKeyboardKey.keyX, control: true): c.cutSelection,
-        const SingleActivator(LogicalKeyboardKey.keyV, control: true): _paste,
-        const SingleActivator(LogicalKeyboardKey.keyD, control: true): c.duplicateSelection,
-        const SingleActivator(LogicalKeyboardKey.delete): c.deleteSelection,
-        const SingleActivator(LogicalKeyboardKey.backspace): c.deleteSelection,
-        const SingleActivator(LogicalKeyboardKey.escape): () => c.clearSelection(),
-        const SingleActivator(LogicalKeyboardKey.keyS, control: true): () => c.save(),
-        const SingleActivator(LogicalKeyboardKey.equal, control: true): () => _handle.zoomBy(1.2),
-        const SingleActivator(LogicalKeyboardKey.minus, control: true): () => _handle.zoomBy(1 / 1.2),
-        const SingleActivator(LogicalKeyboardKey.digit0, control: true): _handle.fit,
-      };
+  Map<ShortcutActivator, VoidCallback> _shortcuts(EditorController c) {
+    // In read mode only looking around works; nothing on the page changes.
+    VoidCallback edit(VoidCallback f) => () {
+          if (!c.readOnly) f();
+        };
+    return {
+      const SingleActivator(LogicalKeyboardKey.keyZ, control: true): edit(c.undo),
+      const SingleActivator(LogicalKeyboardKey.keyY, control: true): edit(c.redo),
+      const SingleActivator(LogicalKeyboardKey.keyZ, control: true, shift: true): edit(c.redo),
+      const SingleActivator(LogicalKeyboardKey.keyC, control: true): c.copySelection,
+      const SingleActivator(LogicalKeyboardKey.keyX, control: true): edit(c.cutSelection),
+      const SingleActivator(LogicalKeyboardKey.keyV, control: true): edit(_paste),
+      const SingleActivator(LogicalKeyboardKey.keyD, control: true): edit(c.duplicateSelection),
+      const SingleActivator(LogicalKeyboardKey.delete): edit(c.deleteSelection),
+      const SingleActivator(LogicalKeyboardKey.backspace): edit(c.deleteSelection),
+      const SingleActivator(LogicalKeyboardKey.escape): () => c.clearSelection(),
+      const SingleActivator(LogicalKeyboardKey.keyS, control: true): () => c.save(),
+      const SingleActivator(LogicalKeyboardKey.keyF, control: true): () => setState(() => _finding = true),
+      const SingleActivator(LogicalKeyboardKey.equal, control: true): () => _handle.zoomBy(1.2),
+      const SingleActivator(LogicalKeyboardKey.minus, control: true): () => _handle.zoomBy(1 / 1.2),
+      const SingleActivator(LogicalKeyboardKey.digit0, control: true): _handle.fit,
+    };
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -287,38 +296,30 @@ class _EditorScreenState extends State<EditorScreen> {
 
   Widget _layout(BuildContext context, EditorController c, AppSettings settings, SettingsController settingsCtl) {
     final dock = settings.toolbarDock;
-    Widget toolbar(Axis axis, {bool compact = false}) => EditorToolbar(
-          c: c,
-          settings: settings,
-          axis: axis,
-          compact: compact,
-          onBack: _close,
-          onInsertImage: () => pickAndInsertImage(context, c, _pageForInsert, _handle.visibleCenterLocal),
-          onRename: () async {
-            final n = await askText(context, title: 'Rename note', initial: c.note.title);
-            if (n != null) c.rename(n);
-          },
-          moreMenu: _moreMenu(context, c, settings, settingsCtl),
-          onDragStart: (g) => setState(() => _dragPos = _toArea(g)),
-          onDragUpdate: (g) => setState(() => _dragPos = _toArea(g)),
-          onDragEnd: (g) {
-            final box = _areaKey.currentContext?.findRenderObject() as RenderBox?;
-            final local = _toArea(g);
-            setState(() => _dragPos = null);
-            if (box == null) return;
-            final d = dockFor(local, box.size);
-            settingsCtl.update((s) => s.copyWith(
-                  toolbarDock: d,
-                  floatX: d == ToolbarDock.floating ? (local.dx - 150).clamp(0, box.size.width - 200) : s.floatX,
-                  floatY: d == ToolbarDock.floating ? (local.dy - 24).clamp(0, box.size.height - 60) : s.floatY,
-                ));
-          },
-          onPenColorsChanged: (col) {
-            if (!settings.penColors.contains(col)) {
-              settingsCtl.update((s) => s.copyWith(penColors: [col, ...s.penColors].take(7).toList()));
-            }
-          },
-        );
+    final pill = ToolPill(
+      c: c,
+      settings: settings,
+      axis: dock == ToolbarDock.left || dock == ToolbarDock.right ? Axis.vertical : Axis.horizontal,
+      onDragStart: (g) => setState(() => _dragPos = _toArea(g)),
+      onDragUpdate: (g) => setState(() => _dragPos = _toArea(g)),
+      onDragEnd: (g) {
+        final box = _areaKey.currentContext?.findRenderObject() as RenderBox?;
+        final local = _toArea(g);
+        setState(() => _dragPos = null);
+        if (box == null) return;
+        final d = dockFor(local, box.size);
+        settingsCtl.update((s) => s.copyWith(
+              toolbarDock: d,
+              floatX: d == ToolbarDock.floating ? (local.dx - 150).clamp(0, box.size.width - 200) : s.floatX,
+              floatY: d == ToolbarDock.floating ? (local.dy - 24).clamp(0, box.size.height - 60) : s.floatY,
+            ));
+      },
+      onPenColorsChanged: (col) {
+        if (!settings.penColors.contains(col)) {
+          settingsCtl.update((s) => s.copyWith(penColors: [col, ...s.penColors].take(7).toList()));
+        }
+      },
+    );
 
     if (c.rulerVisible && _ruler.value == null) WidgetsBinding.instance.addPostFrameCallback((_) => _toggleRuler());
 
@@ -332,40 +333,112 @@ class _EditorScreenState extends State<EditorScreen> {
         imagesVersion: _imagesVersion,
         handle: _handle,
         ruler: _ruler,
+        topInset: dock == ToolbarDock.top ? 52 : 0,
       ),
     );
-    final withPages = Row(children: [
-      Expanded(child: canvas),
-      if (_showPages && c.note.layout == NoteLayout.paged)
-        PageStrip(
+    final paged = c.note.layout == NoteLayout.paged;
+
+    final area = LayoutBuilder(builder: (context, box) {
+      final placed = switch (dock) {
+        ToolbarDock.top => Positioned(top: 10, left: 0, right: 0, child: Center(child: pill)),
+        ToolbarDock.left => Positioned(left: 10, top: 0, bottom: 0, child: Center(child: pill)),
+        ToolbarDock.right => Positioned(right: 10, top: 0, bottom: 0, child: Center(child: pill)),
+        ToolbarDock.floating => Positioned(
+            left: settings.floatX.clamp(0, (box.maxWidth - 120).clamp(0, double.infinity)).toDouble(),
+            top: settings.floatY.clamp(0, (box.maxHeight - 56).clamp(0, double.infinity)).toDouble(),
+            child: pill,
+          ),
+      };
+      return Stack(key: _areaKey, children: [
+        Positioned.fill(child: canvas),
+        placed,
+        if (_dragPos != null) ..._dropHints(context),
+      ]);
+    });
+
+    return Column(children: [
+      NoteBar(
+        c: c,
+        onBack: _close,
+        onRename: () async {
+          final n = await askText(context, title: 'Rename note', initial: c.note.title);
+          if (n != null) c.rename(n);
+        },
+        finding: _finding,
+        onFind: () => _setFinding(!_finding),
+        insertMenu: _insertMenu(context, c),
+        pagesButton: paged
+            ? BarToggle(
+                icon: Icons.view_agenda_outlined,
+                tooltip: 'Pages',
+                on: _showPages,
+                onTap: () => setState(() => _showPages = !_showPages),
+              )
+            : null,
+        moreMenu: _moreMenu(context, c, settings, settingsCtl),
+      ),
+      if (_finding)
+        FindBar(
           c: c,
-          pdf: _pdf,
-          images: _images,
-          onOpen: _handle.showPage,
-          onTemplate: (pid) => _template(pageId: pid),
-          onClose: () => setState(() => _showPages = false),
+          onReveal: (h) => _handle.reveal(h.pageIndex, h.rect),
+          onClose: () => _setFinding(false),
         ),
+      const Divider(height: 1),
+      Expanded(
+        child: Row(children: [
+          Expanded(child: area),
+          if (_showPages && paged)
+            PageStrip(
+              c: c,
+              pdf: _pdf,
+              images: _images,
+              onOpen: _handle.showPage,
+              onTemplate: (pid) => _template(pageId: pid),
+              onClose: () => setState(() => _showPages = false),
+            ),
+        ]),
+      ),
     ]);
+  }
 
-    Widget body;
-    switch (dock) {
-      case ToolbarDock.top:
-        body = Column(children: [toolbar(Axis.horizontal), const Divider(height: 1), Expanded(child: withPages)]);
-      case ToolbarDock.left:
-        body = Row(children: [toolbar(Axis.vertical), const VerticalDivider(width: 1), Expanded(child: withPages)]);
-      case ToolbarDock.right:
-        body = Row(children: [Expanded(child: withPages), const VerticalDivider(width: 1), toolbar(Axis.vertical)]);
-      case ToolbarDock.floating:
-        body = Stack(children: [
-          Positioned.fill(child: withPages),
-          Positioned(left: settings.floatX, top: settings.floatY, child: toolbar(Axis.horizontal, compact: true)),
-        ]);
+  void _setFinding(bool on) {
+    setState(() => _finding = on);
+    if (!on) {
+      _c?.showFindHit(null);
+      _focus.requestFocus();
     }
+  }
 
-    return Stack(key: _areaKey, children: [
-      Positioned.fill(child: body),
-      if (_dragPos != null) ..._dropHints(context),
-    ]);
+  Widget _insertMenu(BuildContext context, EditorController c) {
+    final paged = c.note.layout == NoteLayout.paged;
+    return PopupMenuButton<String>(
+      tooltip: 'Insert',
+      icon: const Icon(Icons.add),
+      enabled: !c.readOnly,
+      onSelected: (v) async {
+        switch (v) {
+          case 'image':
+            await pickAndInsertImage(context, c, _pageForInsert, _handle.visibleCenterLocal);
+          case 'pdf':
+            final f = await openFile(acceptedTypeGroups: const [pdfTypes]);
+            if (f != null) await _insertPdf(await f.readAsBytes());
+          case 'textbox':
+            c.textMode = TextMode.box;
+            c.setTool(EditorTool.text);
+          case 'addpage':
+            c.addPage(after: c.pageIndex(_pageForInsert));
+        }
+      },
+      itemBuilder: (_) => [
+        iconMenuItem('image', Icons.image_outlined, 'Image…'),
+        if (paged) iconMenuItem('pdf', Icons.picture_as_pdf_outlined, 'PDF pages…'),
+        iconMenuItem('textbox', Icons.text_fields, 'Text box'),
+        if (paged) ...[
+          const PopupMenuDivider(),
+          iconMenuItem('addpage', Icons.note_add_outlined, 'New page after this one'),
+        ],
+      ],
+    );
   }
 
   Offset _toArea(Offset global) {
@@ -419,13 +492,6 @@ class _EditorScreenState extends State<EditorScreen> {
       icon: const Icon(Icons.more_vert),
       onSelected: (v) async {
         switch (v) {
-          case 'pages':
-            setState(() => _showPages = !_showPages);
-          case 'addpage':
-            c.addPage(after: c.pageIndex(_pageForInsert));
-          case 'pdf':
-            final f = await openFile(acceptedTypeGroups: const [pdfTypes]);
-            if (f != null) await _insertPdf(await f.readAsBytes());
           case 'template':
             await _template();
           case 'pagetemplate':
@@ -449,9 +515,6 @@ class _EditorScreenState extends State<EditorScreen> {
         }
       },
       itemBuilder: (_) => [
-        if (n.layout == NoteLayout.paged) iconMenuItem('pages', Icons.view_agenda_outlined, 'Page overview', checked: _showPages),
-        if (n.layout == NoteLayout.paged) iconMenuItem('addpage', Icons.note_add_outlined, 'Add page'),
-        if (n.layout == NoteLayout.paged) iconMenuItem('pdf', Icons.picture_as_pdf_outlined, 'Insert PDF pages…'),
         iconMenuItem('template', Icons.texture_outlined, 'Paper template…'),
         if (n.layout == NoteLayout.paged) iconMenuItem('pagetemplate', Icons.description_outlined, 'Template for this page…'),
         if (c.canSwitchLayout)
@@ -465,7 +528,7 @@ class _EditorScreenState extends State<EditorScreen> {
         const PopupMenuDivider(),
         iconMenuItem('fit', Icons.fit_screen_outlined, 'Fit to width', shortcut: 'Ctrl+0'),
         iconMenuItem('finger', Icons.touch_app_outlined, 'Draw with finger', checked: settings.fingerDrawing),
-        if (settings.toolbarDock != ToolbarDock.top) iconMenuItem('dock', Icons.vertical_align_top, 'Put toolbar back on top'),
+        if (settings.toolbarDock != ToolbarDock.top) iconMenuItem('dock', Icons.vertical_align_top, 'Put tools back on top'),
       ],
     );
   }

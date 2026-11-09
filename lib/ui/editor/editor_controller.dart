@@ -6,6 +6,7 @@ import 'dart:math' as math;
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 
+import '../../core/find.dart';
 import '../../core/format/note_codec.dart';
 import '../../core/geometry.dart';
 import '../../core/ids.dart';
@@ -116,7 +117,28 @@ class EditorController extends ChangeNotifier {
   Future<void> markLoaded() async => _diskStamp = await _stamp();
   Future<void>? _saving;
 
+  /// Read mode: the page only scrolls and zooms, so nothing gets drawn by accident.
+  bool readOnly = false;
+
+  /// The search hit outlined on the canvas.
+  FindHit? findHit;
+
+  void toggleReadOnly() {
+    readOnly = !readOnly;
+    if (readOnly) {
+      if (editingTextId != null) finishTextEdit();
+      clearSelection(notify: false);
+    }
+    notifyListeners();
+  }
+
+  void showFindHit(FindHit? h) {
+    findHit = h;
+    notifyListeners();
+  }
+
   void setTool(EditorTool t) {
+    readOnly = false;
     tool = t;
     if (t != EditorTool.select) clearSelection(notify: false);
     notifyListeners();

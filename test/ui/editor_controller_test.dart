@@ -237,4 +237,19 @@ void main() {
       expect(r.takeCancelledTouches(), {7});
     });
   });
+
+  group('read mode', () {
+    test('turning it on drops the selection; picking a tool turns it off', () {
+      final c = make();
+      draw(c, const [Vec2(10, 10), Vec2(40, 40)]);
+      final pid = c.note.pages.first.id;
+      c.setTool(EditorTool.select);
+      c.selectOnly(pid, c.note.pages.first.elements.single.id);
+      c.toggleReadOnly();
+      expect(c.readOnly, isTrue);
+      expect(c.hasSelection, isFalse);
+      c.setTool(EditorTool.pen);
+      expect(c.readOnly, isFalse);
+    });
+  });
 }

@@ -1,5 +1,12 @@
 # Features in detail
 
+## The editor at a glance
+
+- **Top bar** for the note: back, title (click to rename), undo/redo, **find** (Ctrl+F), **read mode**, **insert** (image, PDF pages, text box, new page), **pages** and **⋮** (paper, layout, export, favorite, settings).
+- **Tool pill** floating over the page: typing, pen, highlighter, eraser, selection, ruler. Tap a tool to pick it; tap it again for its panel (type, size, colors). Hold and drag the pill to dock it left, right or top, or let it float.
+- **Read mode** turns the page into view-only: drags scroll, nothing gets drawn by accident. Picking any tool turns it off.
+- **Find** searches the typed text (not handwriting), outlines each match and jumps to it.
+
 ## Pen and ink
 
 - **Pens:** pressure-sensitive pen, fineliner and pencil, each with its own width and color. Tap the active pen again for its options.
