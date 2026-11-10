@@ -97,21 +97,31 @@ jobs:
           distribution: temurin
           java-version: 17
       # Same signing key as the earlier APKs, so Android installs the update over them.
+      # Without it the APK is skipped (build it locally and upload it), since a differently
+      # signed APK can't update an installed CaretNotes.
       - name: Signing key
+        id: key
         env:
           KEYSTORE: ${{ secrets.ANDROID_DEBUG_KEYSTORE }}
         run: |
-          if [ -n "$KEYSTORE" ]; then mkdir -p ~/.android && echo "$KEYSTORE" | base64 -d > ~/.android/debug.keystore
-          else echo "::warning::ANDROID_DEBUG_KEYSTORE not set: this APK can't update an installed CaretNotes"; fi
-      - uses: subosito/flutter-action@v2
+          if [ -n "$KEYSTORE" ]; then
+            mkdir -p ~/.android && echo "$KEYSTORE" | base64 -d > ~/.android/debug.keystore
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::ANDROID_DEBUG_KEYSTORE secret not set: no APK built (see docs/BUILDING.md)"
+          fi
+      - if: steps.key.outputs.ok == 'true'
+        uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           cache: true
-      - run: flutter build apk --release
-      - run: |
+      - if: steps.key.outputs.ok == 'true'
+        run: |
+          flutter build apk --release
           mkdir -p out
           cp build/app/outputs/flutter-apk/app-release.apk "out/CaretNotes-${{ needs.version.outputs.v }}.apk"
-      - uses: actions/upload-artifact@v7
+      - if: steps.key.outputs.ok == 'true'
+        uses: actions/upload-artifact@v7
         with:
           name: android
           path: out/*
