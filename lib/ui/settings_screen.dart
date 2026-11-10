@@ -10,6 +10,8 @@ import '../core/settings.dart';
 import 'controllers.dart';
 import 'folder_style.dart';
 import 'sync/sync_controller.dart';
+import 'update/update_controller.dart';
+import 'update/update_dialog.dart';
 import 'window_chrome.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -155,7 +157,26 @@ class SettingsScreen extends StatelessWidget {
                 onTap: () => launchUrl(Uri.file(context.read<LibraryStore>().root)),
               ),
             ]),
-            Center(child: Text('CaretNotes · open source (MIT)', style: t.textTheme.bodySmall)),
+            section('Updates', [
+              SwitchListTile(
+                title: const Text('Check for updates when CaretNotes starts'),
+                subtitle: const Text('Asks GitHub for the latest release. Nothing about you or your notes is sent.'),
+                value: s.checkUpdates,
+                onChanged: (v) => sc.update((x) => x.copyWith(checkUpdates: v)),
+              ),
+              Builder(builder: (context) {
+                final u = context.watch<UpdateController>();
+                return ListTile(
+                  title: Text('CaretNotes ${UpdateController.current}'),
+                  subtitle: Text(u.error != null ? 'Last check failed: ${u.error}' : 'You get the newest version from GitHub.'),
+                  trailing: OutlinedButton(
+                    onPressed: u.checking ? null : () => checkForUpdatesNow(context, u),
+                    child: Text(u.checking ? 'Checking…' : 'Check for updates'),
+                  ),
+                );
+              }),
+            ]),
+            Center(child: Text('CaretNotes ${UpdateController.current} · open source (MIT)', style: t.textTheme.bodySmall)),
           ]),
         ),
       ),

@@ -34,6 +34,18 @@ void main() {
     await dir.delete(recursive: true);
   });
 
+  test('update checks are on by default and a skipped version is remembered', () async {
+    expect(const AppSettings().checkUpdates, isTrue);
+    expect(const AppSettings().skippedVersion, '');
+    final dir = await Directory.systemTemp.createTemp('cn_set_');
+    final path = '${dir.path}/settings.json';
+    await const AppSettings().copyWith(checkUpdates: false, skippedVersion: '1.4.0').save(path);
+    final back = await AppSettings.load(path);
+    expect(back.checkUpdates, isFalse);
+    expect(back.skippedVersion, '1.4.0');
+    await dir.delete(recursive: true);
+  });
+
   test('corrupt settings file falls back to defaults', () async {
     final dir = await Directory.systemTemp.createTemp('cn_set_');
     final path = '${dir.path}/settings.json';

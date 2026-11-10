@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
@@ -16,6 +19,8 @@ import 'home/home_screen.dart';
 import 'settings_screen.dart';
 import 'sync/sync_controller.dart';
 import 'sync/sync_widgets.dart';
+import 'update/update_controller.dart';
+import 'update/update_dialog.dart';
 
 /// Connects feature modules (editor, sync, export) to the shell. Returns extra providers.
 Future<List<SingleChildWidget>> wireFeatures({
@@ -37,8 +42,19 @@ Future<List<SingleChildWidget>> wireFeatures({
   onNoteOpened = sync.noteOpened;
   onNoteClosed = sync.noteClosed;
 
+  final updates = UpdateController(settings: settings);
+
   WidgetsBinding.instance.addPostFrameCallback((_) => sync.start());
+  // Look for a new release a moment after start (Settings > Updates can turn this off).
+  if (!Platform.environment.containsKey('FLUTTER_TEST')) {
+    Timer(const Duration(seconds: 3), () async {
+      final r = await updates.startupCheck();
+      final ctx = appNavigatorKey.currentContext;
+      if (r != null && ctx != null && ctx.mounted) await showUpdateDialog(ctx, updates, r);
+    });
+  }
   return <SingleChildWidget>[
+    ChangeNotifierProvider<UpdateController>.value(value: updates),
     Provider<LibraryStore>.value(value: store),
     ChangeNotifierProvider<SyncController>.value(value: sync),
   ];

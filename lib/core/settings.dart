@@ -30,6 +30,12 @@ class AppSettings {
   /// Use the system title bar instead of the app's own (window buttons in the header).
   final bool nativeTitleBar;
 
+  /// Look for a new release on GitHub when the app starts.
+  final bool checkUpdates;
+
+  /// A release the user chose to skip; startup checks stay quiet about it.
+  final String skippedVersion;
+
   const AppSettings({
     this.theme = ThemePref.system,
     this.accent = defaultAccent,
@@ -44,6 +50,8 @@ class AppSettings {
     this.leftHanded = false,
     this.penColors = const [0xFF111111, 0xFF1B2A6B, 0xFFD23B3B, 0xFF1A8F3C, 0xFF3B6FE0, 0xFF9B3FD1, 0xFFE07A1F],
     this.nativeTitleBar = false,
+    this.checkUpdates = true,
+    this.skippedVersion = '',
   });
 
   AppSettings copyWith({
@@ -60,6 +68,8 @@ class AppSettings {
     bool? leftHanded,
     List<int>? penColors,
     bool? nativeTitleBar,
+    bool? checkUpdates,
+    String? skippedVersion,
   }) =>
       AppSettings(
         theme: theme ?? this.theme,
@@ -75,6 +85,8 @@ class AppSettings {
         leftHanded: leftHanded ?? this.leftHanded,
         penColors: penColors ?? this.penColors,
         nativeTitleBar: nativeTitleBar ?? this.nativeTitleBar,
+        checkUpdates: checkUpdates ?? this.checkUpdates,
+        skippedVersion: skippedVersion ?? this.skippedVersion,
       );
 
   Map<String, dynamic> toJson() => {
@@ -91,6 +103,8 @@ class AppSettings {
         'leftHanded': leftHanded,
         'penColors': penColors,
         'nativeTitleBar': nativeTitleBar,
+        'checkUpdates': checkUpdates,
+        'skippedVersion': skippedVersion,
       };
 
   factory AppSettings.fromJson(Map<String, dynamic> j) {
@@ -113,6 +127,8 @@ class AppSettings {
       leftHanded: j['leftHanded'] as bool? ?? false,
       penColors: (j['penColors'] as List?)?.cast<int>() ?? d.penColors,
       nativeTitleBar: j['nativeTitleBar'] as bool? ?? false,
+      checkUpdates: j['checkUpdates'] as bool? ?? true,
+      skippedVersion: j['skippedVersion'] as String? ?? '',
     );
   }
 
