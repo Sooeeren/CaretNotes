@@ -25,6 +25,15 @@ void main() {
     await dir.delete(recursive: true);
   });
 
+  test('the app draws its own title bar unless the system one is chosen', () async {
+    expect(const AppSettings().nativeTitleBar, isFalse);
+    final dir = await Directory.systemTemp.createTemp('cn_set_');
+    final path = '${dir.path}/settings.json';
+    await const AppSettings().copyWith(nativeTitleBar: true).save(path);
+    expect((await AppSettings.load(path)).nativeTitleBar, isTrue);
+    await dir.delete(recursive: true);
+  });
+
   test('corrupt settings file falls back to defaults', () async {
     final dir = await Directory.systemTemp.createTemp('cn_set_');
     final path = '${dir.path}/settings.json';

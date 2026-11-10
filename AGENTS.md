@@ -52,6 +52,8 @@ lib/core/   pure Dart, NO Flutter widget imports (portable, unit-testable)
 lib/ui/     Flutter UI
   app.dart, wiring.dart       shell; features plug in through hooks/routes in wiring.dart
   theme.dart                  design tokens (AppTokens: desk, hairline, muted, selectedFill)
+  window_chrome.dart          own title bar: CaptionArea (drag), WindowButtons, CaptionStrip
+  app_logo.dart               the logo, painted (shared with CaretFlow, source docs/brand/icon.svg)
   home/                       sidebar, folder grid, dialogs
   editor/                     EditorController (state + undo, read mode), CanvasView (input + painting), toolbar.dart (NoteBar on top + floating ToolPill), find_bar, ruler, text boxes, images, PDF cache
   sync/                       SyncController, status tile, conflict dialog
@@ -82,6 +84,7 @@ docs/superpowers/             design spec + original implementation plan
 - **Paper:** add new kinds in `lib/core/paper.dart` (`paperGeometry`), never separately in the painter and the PDF export. Format 2 added `cornell`/`staff` and `lh`; unknown kinds read as lined.
 - **Palm rejection** (`InputRouter`): touches are ignored while the pen is down or hovering, and within 500 ms after it lifts. Touches already down when the pen arrives are cancelled. Highlighters always paint under ink (`paintOrder`).
 - **Editor layout (Samsung Notes–style split):** note actions live in the top `NoteBar`; only drawing tools go in the `ToolPill`. Each tool's settings (type, size, colors) belong in its tap-again panel (`tool_options.dart`), not in the bar. Insert things via the `+` menu, page actions via the pages button; keep `⋮` short.
+- **Sister app CaretFlow** (`Sooeeren/CaretFlow`, local folder `folio`): same logo (`docs/brand/icon.svg`, `app_icon.ico`, Android `ic_launcher.png` are copies of CaretFlow's) and the same window chrome. On Windows there is no system title bar (`window_manager`, `TitleBarStyle.hidden`): every screen's header wraps its row in `CaptionArea` and ends with `WindowButtons` (46 px Fluent glyph buttons, red close hover); `CaptionStrip` (a 34 px "Title — CaretNotes" bar) is there for any future screen without a top header. Close goes through `WindowChrome.requestClose` (exit request, so the editor saves). Settings → "Use the system title bar" turns it off. CaretNotes keeps its own, more playful look otherwise.
 - **UI style (calm "paper and ink"):** graphite neutrals and one restrained accent (default `#D9772B`), used only for the active tool and the primary action. Thin outlined Material icons, never `*_rounded`. Corner radii 8–10, Segoe UI Variable, colors from `AppTokens`/`ColorScheme` rather than hard-coded. No emoji as icons.
 
 ## Gotchas

@@ -5,6 +5,7 @@ import '../../core/library/library_store.dart';
 import '../../core/model/folder_meta.dart';
 import '../../core/model/note.dart';
 import '../controllers.dart';
+import '../window_chrome.dart';
 import 'breadcrumbs.dart';
 import 'dialogs.dart';
 import 'folder_grid.dart';
@@ -75,9 +76,10 @@ class _MainArea extends StatelessWidget {
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       Container(
         height: 60,
-        padding: const EdgeInsets.fromLTRB(12, 0, 20, 0),
+        padding: const EdgeInsets.only(left: 12),
         decoration: BoxDecoration(border: Border(bottom: BorderSide(color: Theme.of(context).dividerColor))),
-        child: Row(children: [
+        child: CaptionArea(
+            child: Row(children: [
           IconButton(tooltip: 'Toggle sidebar', icon: const Icon(Icons.menu), onPressed: onToggleSidebar),
           const SizedBox(width: 4),
           Expanded(
@@ -138,7 +140,9 @@ class _MainArea extends StatelessWidget {
             )
           else
             const _NewButton(),
-        ]),
+          // Header height minus its 1 px bottom border.
+          const WindowButtons(height: 59, gap: 12, inactiveWidth: 20),
+        ])),
       ),
       Expanded(child: _content(context, lib)),
       if (lib.selecting) _SelectionBar(lib: lib),

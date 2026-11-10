@@ -15,6 +15,7 @@ import '../../core/settings.dart';
 import '../controllers.dart';
 import '../home/dialogs.dart';
 import '../menu.dart';
+import '../window_chrome.dart';
 import 'canvas_view.dart';
 import 'editor_controller.dart';
 import 'editor_shortcuts.dart';
@@ -267,7 +268,10 @@ class _EditorScreenState extends State<EditorScreen> {
     final c = _c;
     if (_error != null) {
       return Scaffold(
-        appBar: AppBar(),
+        appBar: AppBar(
+          flexibleSpace: const CaptionArea(child: SizedBox.expand()),
+          actions: const [WindowButtons(height: kToolbarHeight)],
+        ),
         body: Center(child: Text('This note could not be opened.\n$_error', textAlign: TextAlign.center)),
       );
     }

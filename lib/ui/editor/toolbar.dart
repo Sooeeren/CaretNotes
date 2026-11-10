@@ -4,6 +4,7 @@ import '../../core/model/elements.dart';
 import '../../core/model/note.dart';
 import '../../core/settings.dart';
 import '../theme.dart';
+import '../window_chrome.dart';
 import 'editor_controller.dart';
 import 'tool_options.dart';
 
@@ -46,45 +47,47 @@ class NoteBar extends StatelessWidget {
       color: t.colorScheme.surfaceContainerLow,
       child: SizedBox(
         height: 52,
-        child: Row(
-          children: [
-            const SizedBox(width: 6),
-            IconButton(tooltip: 'Back to notes', icon: const Icon(Icons.arrow_back), onPressed: onBack),
-            Expanded(
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(6),
-                  onTap: onRename,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(c.note.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: t.textTheme.titleSmall),
-                        Text(_subtitle(), maxLines: 1, style: t.textTheme.bodySmall?.copyWith(fontSize: 11)),
-                      ],
+        child: CaptionArea(
+          child: Row(
+            children: [
+              const SizedBox(width: 6),
+              IconButton(tooltip: 'Back to notes', icon: const Icon(Icons.arrow_back), onPressed: onBack),
+              Expanded(
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(6),
+                    onTap: onRename,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(c.note.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: t.textTheme.titleSmall),
+                          Text(_subtitle(), maxLines: 1, style: t.textTheme.bodySmall?.copyWith(fontSize: 11)),
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-            IconButton(tooltip: 'Undo (Ctrl+Z)', icon: const Icon(Icons.undo), onPressed: c.canUndo && !c.readOnly ? c.undo : null),
-            IconButton(tooltip: 'Redo (Ctrl+Y)', icon: const Icon(Icons.redo), onPressed: c.canRedo && !c.readOnly ? c.redo : null),
-            const SizedBox(height: 22, child: VerticalDivider(width: 17)),
-            BarToggle(icon: Icons.search, tooltip: 'Find in note (Ctrl+F)', on: finding, onTap: onFind),
-            BarToggle(
-              icon: Icons.visibility_outlined,
-              tooltip: c.readOnly ? 'Read mode is on: tap to write again' : 'Read mode (only scroll, no accidental marks)',
-              on: c.readOnly,
-              onTap: c.toggleReadOnly,
-            ),
-            insertMenu,
-            ?pagesButton,
-            moreMenu,
-            const SizedBox(width: 8),
-          ],
+              IconButton(tooltip: 'Undo (Ctrl+Z)', icon: const Icon(Icons.undo), onPressed: c.canUndo && !c.readOnly ? c.undo : null),
+              IconButton(tooltip: 'Redo (Ctrl+Y)', icon: const Icon(Icons.redo), onPressed: c.canRedo && !c.readOnly ? c.redo : null),
+              const SizedBox(height: 22, child: VerticalDivider(width: 17)),
+              BarToggle(icon: Icons.search, tooltip: 'Find in note (Ctrl+F)', on: finding, onTap: onFind),
+              BarToggle(
+                icon: Icons.visibility_outlined,
+                tooltip: c.readOnly ? 'Read mode is on: tap to write again' : 'Read mode (only scroll, no accidental marks)',
+                on: c.readOnly,
+                onTap: c.toggleReadOnly,
+              ),
+              insertMenu,
+              ?pagesButton,
+              moreMenu,
+              const WindowButtons(height: 52, gap: 4, inactiveWidth: 8),
+            ],
+          ),
         ),
       ),
     );

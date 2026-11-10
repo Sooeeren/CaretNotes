@@ -10,6 +10,7 @@ import '../core/settings.dart';
 import 'controllers.dart';
 import 'folder_style.dart';
 import 'sync/sync_controller.dart';
+import 'window_chrome.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -33,7 +34,12 @@ class SettingsScreen extends StatelessWidget {
         );
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Settings'), backgroundColor: t.scaffoldBackgroundColor),
+      appBar: AppBar(
+        title: const Text('Settings'),
+        backgroundColor: t.scaffoldBackgroundColor,
+        flexibleSpace: const CaptionArea(child: SizedBox.expand()),
+        actions: const [WindowButtons(height: kToolbarHeight)],
+      ),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 760),
@@ -74,6 +80,16 @@ class SettingsScreen extends StatelessWidget {
                   ]),
                 ),
               ),
+              if (WindowChrome.supported)
+                SwitchListTile(
+                  title: const Text('Use the system title bar'),
+                  subtitle: const Text("Off: the window buttons sit in the app's own header, as in CaretFlow."),
+                  value: s.nativeTitleBar,
+                  onChanged: (v) {
+                    sc.update((x) => x.copyWith(nativeTitleBar: v));
+                    WindowChrome.apply(custom: !v);
+                  },
+                ),
             ]),
             section('Pen & touch', [
               SwitchListTile(

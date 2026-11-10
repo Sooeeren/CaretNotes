@@ -3,10 +3,12 @@ import 'package:provider/provider.dart';
 
 import '../../core/library/library_store.dart';
 import '../../core/model/folder_meta.dart';
+import '../app_logo.dart';
 import '../controllers.dart';
 import '../folder_style.dart';
 import '../menu.dart';
 import '../theme.dart';
+import '../window_chrome.dart';
 import 'dialogs.dart';
 
 /// Left navigation: library views, folder tree, Recently deleted, settings, sync status.
@@ -95,16 +97,22 @@ class _SidebarState extends State<Sidebar> {
 
     final children = <Widget>[
       if (!widget.compact)
-        Padding(
-          padding: const EdgeInsets.fromLTRB(10, 16, 10, 14),
-          child: Row(children: [
-            const _Mark(),
-            const SizedBox(width: 10),
-            Text('CaretNotes', style: t.textTheme.titleMedium?.copyWith(letterSpacing: -0.1)),
-          ]),
+        CaptionArea(
+          child: IgnorePointer(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(10, 16, 10, 14),
+              child: Row(children: [
+                const AppLogo(size: 26),
+                const SizedBox(width: 10),
+                Text('CaretNotes', style: t.textTheme.titleMedium?.copyWith(letterSpacing: -0.1)),
+              ]),
+            ),
+          ),
         )
       else
-        const Padding(padding: EdgeInsets.symmetric(vertical: 16), child: Center(child: _Mark())),
+        const CaptionArea(
+          child: IgnorePointer(child: Padding(padding: EdgeInsets.symmetric(vertical: 16), child: Center(child: AppLogo(size: 26)))),
+        ),
       _item(context, Icons.notes_outlined, 'All notes', lib.view == HomeView.folder && lib.currentDir.isEmpty, () => lib.openFolder('')),
       _item(context, Icons.schedule_outlined, 'Recent', lib.view == HomeView.recent, () => lib.show(HomeView.recent)),
       _item(context, Icons.star_outline, 'Favorites', lib.view == HomeView.favorites, () => lib.show(HomeView.favorites)),
@@ -220,44 +228,6 @@ class _SidebarState extends State<Sidebar> {
         }
     }
   }
-}
-
-/// Small app mark: a caret on an ink square.
-class _Mark extends StatelessWidget {
-  const _Mark();
-  @override
-  Widget build(BuildContext context) {
-    final t = Theme.of(context);
-    return Container(
-      width: 24,
-      height: 24,
-      decoration: BoxDecoration(color: t.colorScheme.onSurface, borderRadius: BorderRadius.circular(6)),
-      child: CustomPaint(painter: _CaretPainter(t.colorScheme.surfaceContainerLow, t.colorScheme.primary)),
-    );
-  }
-}
-
-class _CaretPainter extends CustomPainter {
-  final Color ink, accent;
-  _CaretPainter(this.ink, this.accent);
-  @override
-  void paint(Canvas canvas, Size s) {
-    final p = Paint()
-      ..color = ink
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.2
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
-    final path = Path()
-      ..moveTo(s.width * 0.28, s.height * 0.62)
-      ..lineTo(s.width * 0.5, s.height * 0.36)
-      ..lineTo(s.width * 0.72, s.height * 0.62);
-    canvas.drawPath(path, p);
-    canvas.drawCircle(Offset(s.width * 0.5, s.height * 0.78), 1.6, Paint()..color = accent);
-  }
-
-  @override
-  bool shouldRepaint(_CaretPainter old) => old.ink != ink || old.accent != accent;
 }
 
 Future<void> editFolderFlow(BuildContext context, LibraryController lib, String relPath, FolderMeta meta) async {

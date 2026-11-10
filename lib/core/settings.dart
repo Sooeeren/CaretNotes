@@ -27,6 +27,9 @@ class AppSettings {
   final bool leftHanded;
   final List<int> penColors;
 
+  /// Use the system title bar instead of the app's own (window buttons in the header).
+  final bool nativeTitleBar;
+
   const AppSettings({
     this.theme = ThemePref.system,
     this.accent = defaultAccent,
@@ -40,6 +43,7 @@ class AppSettings {
     this.deviceName = '',
     this.leftHanded = false,
     this.penColors = const [0xFF111111, 0xFF1B2A6B, 0xFFD23B3B, 0xFF1A8F3C, 0xFF3B6FE0, 0xFF9B3FD1, 0xFFE07A1F],
+    this.nativeTitleBar = false,
   });
 
   AppSettings copyWith({
@@ -55,6 +59,7 @@ class AppSettings {
     String? deviceName,
     bool? leftHanded,
     List<int>? penColors,
+    bool? nativeTitleBar,
   }) =>
       AppSettings(
         theme: theme ?? this.theme,
@@ -69,6 +74,7 @@ class AppSettings {
         deviceName: deviceName ?? this.deviceName,
         leftHanded: leftHanded ?? this.leftHanded,
         penColors: penColors ?? this.penColors,
+        nativeTitleBar: nativeTitleBar ?? this.nativeTitleBar,
       );
 
   Map<String, dynamic> toJson() => {
@@ -84,6 +90,7 @@ class AppSettings {
         'device': deviceName,
         'leftHanded': leftHanded,
         'penColors': penColors,
+        'nativeTitleBar': nativeTitleBar,
       };
 
   factory AppSettings.fromJson(Map<String, dynamic> j) {
@@ -105,6 +112,7 @@ class AppSettings {
       deviceName: j['device'] as String? ?? '',
       leftHanded: j['leftHanded'] as bool? ?? false,
       penColors: (j['penColors'] as List?)?.cast<int>() ?? d.penColors,
+      nativeTitleBar: j['nativeTitleBar'] as bool? ?? false,
     );
   }
 

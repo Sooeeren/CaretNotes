@@ -10,6 +10,7 @@ import 'core/library/library_store.dart';
 import 'core/settings.dart';
 import 'ui/app.dart';
 import 'ui/controllers.dart';
+import 'ui/window_chrome.dart';
 import 'ui/wiring.dart';
 
 Future<void> main(List<String> args) async {
@@ -25,6 +26,8 @@ Future<void> main(List<String> args) async {
     settings = settings.copyWith(deviceName: Platform.localHostname);
     await settings.save(settingsPath);
   }
+
+  WindowChrome.apply(custom: !settings.nativeTitleBar);
 
   final store = LibraryStore(p.join(support.path, 'library'));
   await store.ensureRoot();

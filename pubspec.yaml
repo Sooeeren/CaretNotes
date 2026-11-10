@@ -58,6 +58,7 @@ dependencies:
   markdown: ^7.3.0
   xml: ^7.0.1
   vector_math: ^2.1.4
+  window_manager: ^0.6.0
 
 dev_dependencies:
   flutter_test:
