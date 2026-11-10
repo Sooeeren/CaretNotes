@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>dev.caretnotes.caret_notes</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <name>CaretNotes</name>
+  <summary>Handwritten and typed notes for pen and touch</summary>
+  <description>
+    <p>
+      CaretNotes is a handwriting-first notes app: write with a pen (pressure and palm
+      rejection), type on the lines, add images and PDFs, sort notes into colorful folders
+      and sync them through a folder, WebDAV or Google Drive.
+    </p>
+  </description>
+  <launchable type="desktop-id">dev.caretnotes.caret_notes.desktop</launchable>
+  <url type="homepage">https://github.com/Sooeeren/CaretNotes</url>
+  <content_rating type="oars-1.1" />
+</component>

@@ -20,14 +20,18 @@ Built with Flutter, inspired by Samsung Notes. Windows first; Android comes late
 
 Download the latest version from [Releases](https://github.com/Sooeeren/CaretNotes/releases/latest):
 
-- **Windows:** `CaretNotes.exe`, a single file. Just run it; nothing to install or unzip.
-- **Android:** `CaretNotes.apk`. Allow installing from unknown sources, then open it.
+- **Windows:** `CaretNotes-Setup-<version>.exe` installs it (no admin rights needed) and keeps it updated. Or `CaretNotes-<version>-portable.exe`: one file, nothing to install.
+- **Linux:** `.deb` (Debian, Ubuntu, Mint), `.rpm` (Fedora, openSUSE), `.pkg.tar.zst` (Arch, Manjaro) or the `.AppImage` for any other distro.
+- **Android:** `CaretNotes-<version>.apk`. Allow installing from unknown sources, then open it.
+
+CaretNotes checks for new versions when it starts (Settings → Updates turns that off, or checks by hand).
 
 Or build it yourself with Flutter: see [docs/BUILDING.md](docs/BUILDING.md).
 
 | Platform | Status |
 | --- | --- |
 | Windows 10 / 11 | Works today; made for pen laptops and tablets (Surface, Galaxy Book, any Windows Ink pen) |
+| Linux | Builds from the same code (GTK 3, x86-64); packages for the major distros |
 | Android | Early preview: builds from the same code, not yet tuned for phones and tablets |
 
 ## How is CaretNotes different?

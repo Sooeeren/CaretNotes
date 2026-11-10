@@ -23,6 +23,32 @@ powershell -ExecutionPolicy Bypass -File tool\single_exe\build.ps1   # build\sin
 
 That packs the Release folder (plus the Visual C++ runtime DLLs) into a small launcher (`tool/single_exe/launcher.cpp`). On first start it unpacks once to `%LOCALAPPDATA%\CaretNotes\app\<build id>` and starts the app from there; later starts reuse it. Your notes stay where they always are.
 
+### Installer
+
+```
+powershell -ExecutionPolicy Bypass -File packaging\windows\build.ps1   # build\installer\CaretNotes-Setup-<v>.exe and -portable.exe
+```
+
+Needs [Inno Setup 6](https://jrsoftware.org/isinfo.php) (`winget install JRSoftware.InnoSetup`). The installer (`packaging/windows/caretnotes.iss`) installs per user into `%LOCALAPPDATA%\Programs\CaretNotes` and writes an `install_kind` file there, which tells the in-app updater it may run the next installer with `/SILENT`.
+
+## Linux
+
+On Ubuntu 22.04 or newer (or another distro with the same packages):
+
+```
+sudo apt install clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev libx11-dev libxi-dev
+flutter build linux --release                  # build/linux/x64/release/bundle/caret_notes
+bash packaging/linux/build.sh 1.3.0 out        # .deb, .rpm, Arch .pkg.tar.zst and .AppImage in out/
+```
+
+`build.sh` needs [nfpm](https://nfpm.goreleaser.com) and [appimagetool](https://github.com/AppImage/appimagetool).
+
+## Releases
+
+Bump `version:` in `pubspec.yaml` and `appVersion` in `lib/core/version.dart`, add `docs/release-notes/v<version>.md`, then push a tag `v<version>`. The `Release` workflow builds every download above on GitHub and publishes the release. Run it by hand (publish off) to only build. The Android job signs with the key in the `ANDROID_DEBUG_KEYSTORE` secret (base64 of `~/.android/debug.keystore`), so updates install over earlier APKs.
+
+The in-app updater finds the files by name (`lib/core/update/update_check.dart`), so keep the names the workflow uses.
+
 ## Android
 
 ```

@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=CaretNotes
+GenericName=Handwritten notes
+Comment=Take handwritten and typed notes with pen and touch
+Exec=caretnotes
+Icon=dev.caretnotes.caret_notes
+Terminal=false
+Categories=Office;Education;
+Keywords=notes;handwriting;pen;stylus;ink;pdf;
+StartupWMClass=dev.caretnotes.caret_notes

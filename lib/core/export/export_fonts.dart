@@ -33,6 +33,27 @@ class ExportFonts {
         mono: await load(['/system/fonts/DroidSansMono.ttf']),
       );
     }
+    if (Platform.isLinux) {
+      // DejaVu ships with nearly every distro (Debian/Ubuntu, Fedora, Arch paths), Liberation as fallback.
+      List<String> paths(String file) => [
+            for (final d in [
+              '/usr/share/fonts/truetype/dejavu',
+              '/usr/share/fonts/dejavu-sans-fonts',
+              '/usr/share/fonts/dejavu-sans-mono-fonts',
+              '/usr/share/fonts/TTF',
+              '/usr/share/fonts/dejavu',
+            ])
+              '$d/$file',
+          ];
+      List<String> liberation(String file) =>
+          ['/usr/share/fonts/truetype/liberation/$file', '/usr/share/fonts/liberation-sans/$file', '/usr/share/fonts/liberation/$file'];
+      return ExportFonts(
+        regular: await load([...paths('DejaVuSans.ttf'), ...liberation('LiberationSans-Regular.ttf')]),
+        bold: await load([...paths('DejaVuSans-Bold.ttf'), ...liberation('LiberationSans-Bold.ttf')]),
+        italic: await load([...paths('DejaVuSans-Oblique.ttf'), ...liberation('LiberationSans-Italic.ttf')]),
+        mono: await load([...paths('DejaVuSansMono.ttf'), ...liberation('LiberationMono-Regular.ttf')]),
+      );
+    }
     return const ExportFonts();
   }
 }
