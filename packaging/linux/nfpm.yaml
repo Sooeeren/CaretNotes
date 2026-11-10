@@ -40,4 +40,4 @@ overrides:
     recommends: [dejavu-sans-fonts, dejavu-sans-mono-fonts]
   archlinux:
     depends: [gtk3, libx11, libxi, gcc-libs]
-    optdepends: ['ttf-dejavu: fonts for PDF export']
+    suggests: ['ttf-dejavu: fonts for PDF export']

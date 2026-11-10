@@ -1,0 +1,35 @@
+name: Build
+
+# Every push to main: check the code, run the tests and build the one-file Windows exe.
+# Download it from the run's page (Actions tab -> latest "Build" run -> Artifacts).
+# Publishing a release for everyone is separate: see release.yml (push a v<version> tag).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.9
+          cache: true
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test
+      - run: flutter build windows --release
+      - run: powershell -ExecutionPolicy Bypass -File tool\single_exe\build.ps1
+      - uses: actions/upload-artifact@v7
+        with:
+          name: CaretNotes-${{ github.sha }}
+          path: build/single_exe/CaretNotes.exe
+          retention-days: 14
