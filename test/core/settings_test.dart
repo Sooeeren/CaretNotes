@@ -1,6 +1,8 @@
 import 'dart:io';
 
+import 'package:caret_notes/core/model/elements.dart';
 import 'package:caret_notes/core/settings.dart';
+import 'package:caret_notes/core/tool_prefs.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -55,6 +57,38 @@ void main() {
     expect(back.checkUpdates, isFalse);
     expect(back.skippedVersion, '1.4.0');
     await dir.delete(recursive: true);
+  });
+
+  test('the eraser is partial by default', () {
+    expect(const AppSettings().tools.eraserPartial, isTrue);
+    expect(AppSettings.fromJson(const {}).tools.eraserPartial, isTrue);
+  });
+
+  test('tool options are saved and loaded', () async {
+    final dir = await Directory.systemTemp.createTemp('cn_set_');
+    final path = '${dir.path}/settings.json';
+    const tools = ToolPrefs(
+      penKind: ToolKind.pencil,
+      penColor: 0xFFD23B3B,
+      penWidth: 5.5,
+      hlColor: 0xFF00FF00,
+      hlWidth: 20,
+      eraserPartial: false,
+      eraserSize: 22,
+      selectMode: SelectMode.lasso,
+      textMode: TextMode.box,
+    );
+    await const AppSettings().copyWith(tools: tools).save(path);
+    final back = (await AppSettings.load(path)).tools;
+    expect(back, tools);
+    await dir.delete(recursive: true);
+  });
+
+  test('bad tool values fall back to defaults', () {
+    final t = ToolPrefs.fromJson(const {'penKind': 'crayon', 'penWidth': 'x', 'eraserSize': 999});
+    expect(t.penKind, const ToolPrefs().penKind);
+    expect(t.penWidth, const ToolPrefs().penWidth);
+    expect(t.eraserSize, 40);
   });
 
   test('corrupt settings file falls back to defaults', () async {

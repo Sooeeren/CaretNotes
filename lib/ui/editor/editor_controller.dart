@@ -18,13 +18,11 @@ import '../../core/model/elements.dart';
 import '../../core/model/note.dart';
 import '../../core/model/page.dart';
 import '../../core/paper.dart';
+import '../../core/tool_prefs.dart';
+
+export '../../core/tool_prefs.dart' show SelectMode, TextMode, ToolPrefs;
 
 enum EditorTool { pen, highlighter, eraser, select, text }
-
-enum SelectMode { lasso, box }
-
-/// What the text tool does on tap: type on the paper's lines, or place a free text box.
-enum TextMode { lines, box }
 
 /// The stroke (or lasso path) currently being drawn. Repaints only the live layer.
 class LiveInk extends ChangeNotifier {
@@ -80,15 +78,41 @@ class EditorController extends ChangeNotifier {
 
   // ---- tool state ----
   EditorTool tool = EditorTool.pen;
-  ToolKind penKind = ToolKind.pen;
-  int penColor = 0xFF1B2A6B;
-  double penWidth = 2.4;
-  int hlColor = 0xFFFFE14D;
-  double hlWidth = 14;
-  bool eraserPartial = false;
-  double eraserSize = 8;
-  SelectMode selectMode = SelectMode.box;
-  TextMode textMode = TextMode.lines;
+  ToolKind penKind = const ToolPrefs().penKind;
+  int penColor = const ToolPrefs().penColor;
+  double penWidth = const ToolPrefs().penWidth;
+  int hlColor = const ToolPrefs().hlColor;
+  double hlWidth = const ToolPrefs().hlWidth;
+  bool eraserPartial = const ToolPrefs().eraserPartial;
+  double eraserSize = const ToolPrefs().eraserSize;
+  SelectMode selectMode = const ToolPrefs().selectMode;
+  TextMode textMode = const ToolPrefs().textMode;
+
+  /// The tool options as saved in the settings.
+  ToolPrefs get toolPrefs => ToolPrefs(
+        penKind: penKind,
+        penColor: penColor,
+        penWidth: penWidth,
+        hlColor: hlColor,
+        hlWidth: hlWidth,
+        eraserPartial: eraserPartial,
+        eraserSize: eraserSize,
+        selectMode: selectMode,
+        textMode: textMode,
+      );
+
+  /// Takes over saved tool options (when a note opens). Doesn't notify.
+  void applyToolPrefs(ToolPrefs p) {
+    penKind = p.penKind;
+    penColor = p.penColor;
+    penWidth = p.penWidth;
+    hlColor = p.hlColor;
+    hlWidth = p.hlWidth;
+    eraserPartial = p.eraserPartial;
+    eraserSize = p.eraserSize;
+    selectMode = p.selectMode;
+    textMode = p.textMode;
+  }
   bool rulerVisible = false;
 
   final LiveInk live = LiveInk();

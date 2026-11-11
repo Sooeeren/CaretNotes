@@ -63,6 +63,11 @@ class _EditorScreenState extends State<EditorScreen> {
   final _areaKey = GlobalKey();
   bool _closing = false;
 
+  /// Tool options are written to the settings a moment after the last change,
+  /// so dragging a size slider doesn't save on every step.
+  Timer? _toolSave;
+  late SettingsController _settingsCtl;
+
   late final AppLifecycleListener _lifecycle;
 
   @override
@@ -72,6 +77,7 @@ class _EditorScreenState extends State<EditorScreen> {
     _lifecycle = AppLifecycleListener(
       onExitRequested: () async {
         try {
+          if (_toolSave != null) _saveTools();
           await _c?.close();
         } catch (_) {}
         return ui.AppExitResponse.exit;
@@ -84,13 +90,15 @@ class _EditorScreenState extends State<EditorScreen> {
 
   Future<void> _load() async {
     final store = context.read<LibraryStore>();
-    final settings = context.read<SettingsController>().value;
+    _settingsCtl = context.read<SettingsController>();
+    final settings = _settingsCtl.value;
     // Tell sync first, so it leaves this note alone from the moment it starts loading.
     onNoteOpened?.call(widget.relPath);
     try {
       final note = await store.loadNote(widget.relPath);
       final c = EditorController(note: note, relPath: widget.relPath, store: store, deviceName: settings.deviceName);
       _pdf = PdfPageCache(() => c.note.assets);
+      c.applyToolPrefs(settings.tools);
       c.thumbnailer = _thumbnail;
       c.addListener(_onNoteChanged);
       await c.markLoaded();
@@ -112,12 +120,23 @@ class _EditorScreenState extends State<EditorScreen> {
   void _onNoteChanged() {
     final c = _c;
     if (c == null) return;
+    if (c.toolPrefs != _settingsCtl.value.tools) {
+      _toolSave?.cancel();
+      _toolSave = Timer(const Duration(milliseconds: 600), _saveTools);
+    }
     final missing = c.note.assets.keys.where((k) => !_images.containsKey(k) && !k.startsWith('pdf-'));
     if (missing.isNotEmpty) {
       decodeImages(c.note, into: _images).then((_) {
         if (mounted) setState(() => _imagesVersion++);
       });
     }
+  }
+
+  void _saveTools() {
+    _toolSave?.cancel();
+    _toolSave = null;
+    final tools = _c?.toolPrefs;
+    if (tools != null && tools != _settingsCtl.value.tools) _settingsCtl.update((s) => s.copyWith(tools: tools));
   }
 
   void _setFullScreen(bool on) {
@@ -131,6 +150,7 @@ class _EditorScreenState extends State<EditorScreen> {
   void dispose() {
     if (_fullScreen) WindowChrome.setFullScreen(false);
     _lifecycle.dispose();
+    if (_toolSave != null) _saveTools();
     _c?.removeListener(_onNoteChanged);
     _c?.dispose();
     if (_c != null) _pdf.dispose();

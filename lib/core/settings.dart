@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'tool_prefs.dart';
+
 enum ThemePref { system, light, dark }
 
 enum SideButtonAction { eraser, lasso }
@@ -40,6 +42,9 @@ class AppSettings {
   /// A release the user chose to skip; startup checks stay quiet about it.
   final String skippedVersion;
 
+  /// The drawing tools' options (pen, highlighter, eraser, select, text).
+  final ToolPrefs tools;
+
   const AppSettings({
     this.theme = ThemePref.system,
     this.accent = defaultAccent,
@@ -57,6 +62,7 @@ class AppSettings {
     this.nativeTitleBar = false,
     this.checkUpdates = true,
     this.skippedVersion = '',
+    this.tools = const ToolPrefs(),
   });
 
   AppSettings copyWith({
@@ -76,6 +82,7 @@ class AppSettings {
     bool? nativeTitleBar,
     bool? checkUpdates,
     String? skippedVersion,
+    ToolPrefs? tools,
   }) =>
       AppSettings(
         theme: theme ?? this.theme,
@@ -94,6 +101,7 @@ class AppSettings {
         nativeTitleBar: nativeTitleBar ?? this.nativeTitleBar,
         checkUpdates: checkUpdates ?? this.checkUpdates,
         skippedVersion: skippedVersion ?? this.skippedVersion,
+        tools: tools ?? this.tools,
       );
 
   Map<String, dynamic> toJson() => {
@@ -113,6 +121,7 @@ class AppSettings {
         'nativeTitleBar': nativeTitleBar,
         'checkUpdates': checkUpdates,
         'skippedVersion': skippedVersion,
+        'tools': tools.toJson(),
       };
 
   factory AppSettings.fromJson(Map<String, dynamic> j) {
@@ -138,6 +147,10 @@ class AppSettings {
       nativeTitleBar: j['nativeTitleBar'] as bool? ?? false,
       checkUpdates: j['checkUpdates'] as bool? ?? true,
       skippedVersion: j['skippedVersion'] as String? ?? '',
+      tools: switch (j['tools']) {
+        final Map m => ToolPrefs.fromJson(m.cast<String, dynamic>()),
+        _ => d.tools,
+      },
     );
   }
 

@@ -27,6 +27,19 @@ void draw(EditorController c, List<Vec2> pts, {ToolKind tool = ToolKind.pen}) {
 }
 
 void main() {
+  test('tool options come from and go back to ToolPrefs', () {
+    final c = make();
+    expect(c.eraserPartial, isTrue);
+    const prefs = ToolPrefs(penWidth: 6, eraserPartial: false, eraserSize: 30, selectMode: SelectMode.lasso);
+    c.applyToolPrefs(prefs);
+    expect(c.penWidth, 6);
+    expect(c.eraserPartial, isFalse);
+    expect(c.selectMode, SelectMode.lasso);
+    expect(c.toolPrefs, prefs);
+    c.update(() => c.eraserSize = 12);
+    expect(c.toolPrefs.eraserSize, 12);
+  });
+
   group('strokes and undo', () {
     test('a pen stroke is added to the page', () {
       final c = make();
