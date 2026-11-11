@@ -5,12 +5,13 @@ enum ThemePref { system, light, dark }
 
 enum SideButtonAction { eraser, lasso }
 
-enum ToolbarDock { top, left, right, floating }
+enum ToolbarDock { top, bottom, left, right, floating }
 
 enum SyncProvider { none, folder, webdav, gdrive }
 
 class AppSettings {
   static const defaultAccent = 0xFFD9772B;
+  static const maxQuickColors = 8;
   static const _oldDefaultAccent = 0xFFFF8A1F;
 
   final ThemePref theme;
@@ -26,6 +27,9 @@ class AppSettings {
   final String deviceName;
   final bool leftHanded;
   final List<int> penColors;
+
+  /// How many of [penColors] sit right in the tool pill (0 hides them).
+  final int quickColors;
 
   /// Use the system title bar instead of the app's own (window buttons in the header).
   final bool nativeTitleBar;
@@ -49,6 +53,7 @@ class AppSettings {
     this.deviceName = '',
     this.leftHanded = false,
     this.penColors = const [0xFF111111, 0xFF1B2A6B, 0xFFD23B3B, 0xFF1A8F3C, 0xFF3B6FE0, 0xFF9B3FD1, 0xFFE07A1F],
+    this.quickColors = 3,
     this.nativeTitleBar = false,
     this.checkUpdates = true,
     this.skippedVersion = '',
@@ -67,6 +72,7 @@ class AppSettings {
     String? deviceName,
     bool? leftHanded,
     List<int>? penColors,
+    int? quickColors,
     bool? nativeTitleBar,
     bool? checkUpdates,
     String? skippedVersion,
@@ -84,6 +90,7 @@ class AppSettings {
         deviceName: deviceName ?? this.deviceName,
         leftHanded: leftHanded ?? this.leftHanded,
         penColors: penColors ?? this.penColors,
+        quickColors: quickColors ?? this.quickColors,
         nativeTitleBar: nativeTitleBar ?? this.nativeTitleBar,
         checkUpdates: checkUpdates ?? this.checkUpdates,
         skippedVersion: skippedVersion ?? this.skippedVersion,
@@ -102,6 +109,7 @@ class AppSettings {
         'device': deviceName,
         'leftHanded': leftHanded,
         'penColors': penColors,
+        'quickColors': quickColors,
         'nativeTitleBar': nativeTitleBar,
         'checkUpdates': checkUpdates,
         'skippedVersion': skippedVersion,
@@ -126,6 +134,7 @@ class AppSettings {
       deviceName: j['device'] as String? ?? '',
       leftHanded: j['leftHanded'] as bool? ?? false,
       penColors: (j['penColors'] as List?)?.cast<int>() ?? d.penColors,
+      quickColors: ((j['quickColors'] as num?)?.toInt() ?? d.quickColors).clamp(0, maxQuickColors),
       nativeTitleBar: j['nativeTitleBar'] as bool? ?? false,
       checkUpdates: j['checkUpdates'] as bool? ?? true,
       skippedVersion: j['skippedVersion'] as String? ?? '',

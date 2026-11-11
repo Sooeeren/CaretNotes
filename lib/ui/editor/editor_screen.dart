@@ -55,6 +55,9 @@ class _EditorScreenState extends State<EditorScreen> {
   final _focus = FocusNode();
   bool _showPages = false;
   bool _finding = false;
+
+  /// Full screen: the top bar is hidden and the window fills the display.
+  bool _fullScreen = false;
   Offset? _dragPos;
   final _areaKey = GlobalKey();
   bool _closing = false;
@@ -116,8 +119,16 @@ class _EditorScreenState extends State<EditorScreen> {
     }
   }
 
+  void _setFullScreen(bool on) {
+    if (on == _fullScreen) return;
+    setState(() => _fullScreen = on);
+    WindowChrome.setFullScreen(on);
+    _focus.requestFocus();
+  }
+
   @override
   void dispose() {
+    if (_fullScreen) WindowChrome.setFullScreen(false);
     _lifecycle.dispose();
     _c?.removeListener(_onNoteChanged);
     _c?.dispose();
@@ -130,6 +141,7 @@ class _EditorScreenState extends State<EditorScreen> {
   Future<void> _close() async {
     if (_closing) return;
     _closing = true;
+    _setFullScreen(false);
     final c = _c;
     if (c != null) {
       FocusManager.instance.primaryFocus?.unfocus();
@@ -252,7 +264,14 @@ class _EditorScreenState extends State<EditorScreen> {
       const SingleActivator(LogicalKeyboardKey.keyD, control: true): edit(c.duplicateSelection),
       const SingleActivator(LogicalKeyboardKey.delete): edit(c.deleteSelection),
       const SingleActivator(LogicalKeyboardKey.backspace): edit(c.deleteSelection),
-      const SingleActivator(LogicalKeyboardKey.escape): () => c.clearSelection(),
+      const SingleActivator(LogicalKeyboardKey.escape): () {
+        if (_fullScreen && !c.hasSelection) {
+          _setFullScreen(false);
+        } else {
+          c.clearSelection();
+        }
+      },
+      const SingleActivator(LogicalKeyboardKey.f11): () => _setFullScreen(!_fullScreen),
       const SingleActivator(LogicalKeyboardKey.keyS, control: true): () => c.save(),
       const SingleActivator(LogicalKeyboardKey.keyF, control: true): () => setState(() => _finding = true),
       const SingleActivator(LogicalKeyboardKey.equal, control: true): () => _handle.zoomBy(1.2),
@@ -290,7 +309,9 @@ class _EditorScreenState extends State<EditorScreen> {
             focusNode: _focus,
             child: ListenableBuilder(
               listenable: c,
-              builder: (context, _) => _layout(context, c, settings, settingsCtl),
+              builder: (context, _) => LayoutBuilder(
+                builder: (context, box) => _layout(context, c, settings, settingsCtl, compact: box.maxWidth < 640),
+              ),
             ),
           ),
         ),
@@ -298,7 +319,8 @@ class _EditorScreenState extends State<EditorScreen> {
     );
   }
 
-  Widget _layout(BuildContext context, EditorController c, AppSettings settings, SettingsController settingsCtl) {
+  Widget _layout(BuildContext context, EditorController c, AppSettings settings, SettingsController settingsCtl,
+      {required bool compact}) {
     final dock = settings.toolbarDock;
     final pill = ToolPill(
       c: c,
@@ -337,16 +359,18 @@ class _EditorScreenState extends State<EditorScreen> {
         imagesVersion: _imagesVersion,
         handle: _handle,
         ruler: _ruler,
-        topInset: dock == ToolbarDock.top ? 52 : 0,
+        topInset: dock == ToolbarDock.top || _fullScreen ? 52 : 0,
       ),
     );
     final paged = c.note.layout == NoteLayout.paged;
 
     final area = LayoutBuilder(builder: (context, box) {
       final placed = switch (dock) {
-        ToolbarDock.top => Positioned(top: 10, left: 0, right: 0, child: Center(child: pill)),
-        ToolbarDock.left => Positioned(left: 10, top: 0, bottom: 0, child: Center(child: pill)),
-        ToolbarDock.right => Positioned(right: 10, top: 0, bottom: 0, child: Center(child: pill)),
+        // Docked, the pill shrinks to fit a small window rather than running off it.
+        ToolbarDock.top => Positioned(top: 10, left: 8, right: 8, child: Center(child: FittedBox(fit: BoxFit.scaleDown, child: pill))),
+        ToolbarDock.bottom => Positioned(bottom: 10, left: 8, right: 8, child: Center(child: FittedBox(fit: BoxFit.scaleDown, child: pill))),
+        ToolbarDock.left => Positioned(left: 10, top: 8, bottom: 8, child: Center(child: FittedBox(fit: BoxFit.scaleDown, child: pill))),
+        ToolbarDock.right => Positioned(right: 10, top: 8, bottom: 8, child: Center(child: FittedBox(fit: BoxFit.scaleDown, child: pill))),
         ToolbarDock.floating => Positioned(
             left: settings.floatX.clamp(0, (box.maxWidth - 120).clamp(0, double.infinity)).toDouble(),
             top: settings.floatY.clamp(0, (box.maxHeight - 56).clamp(0, double.infinity)).toDouble(),
@@ -356,13 +380,31 @@ class _EditorScreenState extends State<EditorScreen> {
       return Stack(key: _areaKey, children: [
         Positioned.fill(child: canvas),
         placed,
+        if (_fullScreen)
+          Positioned(
+            top: 10,
+            right: 10,
+            child: Material(
+              color: Theme.of(context).colorScheme.surfaceContainerLow.withValues(alpha: 0.92),
+              shape: const CircleBorder(),
+              elevation: 3,
+              child: IconButton(
+                tooltip: 'Exit full screen (Esc)',
+                icon: const Icon(Icons.fullscreen_exit),
+                onPressed: () => _setFullScreen(false),
+              ),
+            ),
+          ),
         if (_dragPos != null) ..._dropHints(context),
       ]);
     });
 
     return Column(children: [
+      if (!_fullScreen) ...[
       NoteBar(
         c: c,
+        compact: compact,
+        onFullScreen: () => _setFullScreen(true),
         onBack: _close,
         onRename: () async {
           final n = await askText(context, title: 'Rename note', initial: c.note.title);
@@ -379,8 +421,9 @@ class _EditorScreenState extends State<EditorScreen> {
                 onTap: () => setState(() => _showPages = !_showPages),
               )
             : null,
-        moreMenu: _moreMenu(context, c, settings, settingsCtl),
+        moreMenu: _moreMenu(context, c, settings, settingsCtl, compact: compact),
       ),
+      ],
       if (_finding)
         FindBar(
           c: c,
@@ -469,8 +512,9 @@ class _EditorScreenState extends State<EditorScreen> {
         );
     return [
       zone(Rect.fromLTWH(8, 8, size.width - 16, 60), ToolbarDock.top),
-      zone(Rect.fromLTWH(8, 76, 60, size.height - 84), ToolbarDock.left),
-      zone(Rect.fromLTWH(size.width - 68, 76, 60, size.height - 84), ToolbarDock.right),
+      zone(Rect.fromLTWH(8, size.height - 68, size.width - 16, 60), ToolbarDock.bottom),
+      zone(Rect.fromLTWH(8, 76, 60, size.height - 152), ToolbarDock.left),
+      zone(Rect.fromLTWH(size.width - 68, 76, 60, size.height - 152), ToolbarDock.right),
       Positioned(
         left: _dragPos!.dx - 60,
         top: _dragPos!.dy - 20,
@@ -489,7 +533,8 @@ class _EditorScreenState extends State<EditorScreen> {
     ];
   }
 
-  Widget _moreMenu(BuildContext context, EditorController c, AppSettings settings, SettingsController settingsCtl) {
+  Widget _moreMenu(BuildContext context, EditorController c, AppSettings settings, SettingsController settingsCtl,
+      {bool compact = false}) {
     final n = c.note;
     return PopupMenuButton<String>(
       tooltip: 'More',
@@ -514,11 +559,23 @@ class _EditorScreenState extends State<EditorScreen> {
             _handle.fit();
           case 'finger':
             await settingsCtl.update((s) => s.copyWith(fingerDrawing: !s.fingerDrawing));
+          case 'find':
+            _setFinding(!_finding);
+          case 'read':
+            c.toggleReadOnly();
+          case 'fullscreen':
+            _setFullScreen(true);
           case 'dock':
             await settingsCtl.update((s) => s.copyWith(toolbarDock: ToolbarDock.top));
         }
       },
       itemBuilder: (_) => [
+        if (compact) ...[
+          iconMenuItem('find', Icons.search, 'Find in note', shortcut: 'Ctrl+F'),
+          iconMenuItem('read', Icons.visibility_outlined, 'Read mode', checked: c.readOnly),
+          iconMenuItem('fullscreen', Icons.fullscreen, 'Full screen', shortcut: 'F11'),
+          const PopupMenuDivider(),
+        ],
         iconMenuItem('template', Icons.texture_outlined, 'Paper template…'),
         if (n.layout == NoteLayout.paged) iconMenuItem('pagetemplate', Icons.description_outlined, 'Template for this page…'),
         if (c.canSwitchLayout)

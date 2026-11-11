@@ -69,6 +69,7 @@ void main() {
         onRename: () {},
         onFind: () {},
         finding: false,
+        onFullScreen: () {},
         insertMenu: const SizedBox(),
         pagesButton: null,
         moreMenu: const SizedBox(),
@@ -82,5 +83,31 @@ void main() {
     expect(c.readOnly, isTrue);
     expect(find.text('1 page · Read mode'), findsOneWidget);
     expect(undo().onPressed, isNull);
+  });
+
+  testWidgets('full-screen button, and a small window moves find and read mode into the menu', (tester) async {
+    final c = make();
+    var full = 0;
+    Widget bar(bool compact) => wrap(NoteBar(
+          c: c,
+          onBack: () {},
+          onRename: () {},
+          onFind: () {},
+          finding: false,
+          onFullScreen: () => full++,
+          compact: compact,
+          insertMenu: const SizedBox(),
+          pagesButton: null,
+          moreMenu: const SizedBox(),
+        ));
+    await tester.pumpWidget(bar(false));
+    await tester.tap(find.byTooltip('Full screen (F11)'));
+    expect(full, 1);
+    expect(find.byTooltip('Find in note (Ctrl+F)'), findsOneWidget);
+
+    await tester.pumpWidget(bar(true));
+    expect(find.byTooltip('Find in note (Ctrl+F)'), findsNothing);
+    expect(find.byTooltip('Full screen (F11)'), findsNothing);
+    expect(find.byIcon(Icons.undo), findsOneWidget);
   });
 }

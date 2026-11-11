@@ -5,6 +5,7 @@ import '../../core/library/library_store.dart';
 import '../../core/model/folder_meta.dart';
 import '../../core/model/note.dart';
 import '../controllers.dart';
+import '../menu.dart';
 import '../window_chrome.dart';
 import 'breadcrumbs.dart';
 import 'dialogs.dart';
@@ -79,19 +80,38 @@ class _MainArea extends StatelessWidget {
         padding: const EdgeInsets.only(left: 12),
         decoration: BoxDecoration(border: Border(bottom: BorderSide(color: Theme.of(context).dividerColor))),
         child: CaptionArea(
-            child: Row(children: [
+            child: LayoutBuilder(builder: (context, box) {
+          // Small windows: the search field shrinks, then folds into a button, so the
+          // header never overflows and keeps empty space to drag the window by.
+          final searchWidth = (box.maxWidth - 520).clamp(0.0, 240.0);
+          final compact = box.maxWidth < 640;
+          return Row(children: [
           IconButton(tooltip: 'Toggle sidebar', icon: const Icon(Icons.menu), onPressed: onToggleSidebar),
           const SizedBox(width: 4),
           Expanded(
             child: title == null
                 ? Breadcrumbs(relDir: lib.currentDir, onOpen: lib.openFolder)
-                : Padding(
-                    padding: const EdgeInsets.only(left: 8),
-                    child: Text(title, style: t.textTheme.titleLarge),
+                : CaptionDrag(
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: 8),
+                      child: Text(title, style: t.textTheme.titleLarge, maxLines: 1, overflow: TextOverflow.ellipsis),
+                    ),
                   ),
           ),
+          if (searchWidth < 140)
+            IconButton(
+              tooltip: 'Search',
+              icon: const Icon(Icons.search),
+              onPressed: () async {
+                final q = await askText(context, title: 'Search notes', initial: search.text, label: 'Search', ok: 'Search');
+                if (q == null) return;
+                search.text = q;
+                lib.search(q);
+              },
+            )
+          else
           SizedBox(
-            width: 240,
+            width: searchWidth,
             child: TextField(
               controller: search,
               decoration: InputDecoration(
@@ -113,6 +133,19 @@ class _MainArea extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           if (lib.view == HomeView.folder) _SortMenu(meta: lib.currentMeta),
+          if (compact)
+            PopupMenuButton<String>(
+              tooltip: 'More',
+              icon: const Icon(Icons.more_vert),
+              onSelected: (v) => v == 'select' ? lib.setSelecting(!lib.selecting) : lib.toggleGrid(),
+              itemBuilder: (_) => [
+                if (lib.view != HomeView.trash) iconMenuItem('select', Icons.checklist, 'Select several', checked: lib.selecting),
+                lib.grid
+                    ? iconMenuItem('view', Icons.view_list_outlined, 'List view')
+                    : iconMenuItem('view', Icons.grid_view, 'Grid view'),
+              ],
+            )
+          else ...[
           if (lib.view != HomeView.trash)
             IconButton(
               tooltip: 'Select several',
@@ -125,6 +158,7 @@ class _MainArea extends StatelessWidget {
             icon: Icon(lib.grid ? Icons.view_list_outlined : Icons.grid_view),
             onPressed: lib.toggleGrid,
           ),
+          ],
           const SizedBox(width: 4),
           if (lib.view == HomeView.trash)
             TextButton.icon(
@@ -139,10 +173,11 @@ class _MainArea extends StatelessWidget {
               label: const Text('Empty'),
             )
           else
-            const _NewButton(),
-          // Header height minus its 1 px bottom border.
-          const WindowButtons(height: 59, gap: 12, inactiveWidth: 20),
-        ])),
+            _NewButton(compact: compact),
+          // Header height minus its 1 px bottom border. The gap stays empty title bar.
+          const WindowButtons(height: 59, gap: 20, inactiveWidth: 20),
+        ]);
+        })),
       ),
       Expanded(child: _content(context, lib)),
       if (lib.selecting) _SelectionBar(lib: lib),
@@ -269,7 +304,9 @@ class _SortMenu extends StatelessWidget {
 }
 
 class _NewButton extends StatelessWidget {
-  const _NewButton();
+  /// Just the + icon, for small windows.
+  final bool compact;
+  const _NewButton({this.compact = false});
   @override
   Widget build(BuildContext context) {
     final lib = context.read<LibraryController>();
@@ -307,7 +344,13 @@ class _NewButton extends StatelessWidget {
           const PopupMenuItem(value: 'pdf', child: ListTile(leading: Icon(Icons.picture_as_pdf_outlined), title: Text('Import PDF'))),
       ],
       child: IgnorePointer(
-        child: FilledButton.icon(onPressed: () {}, icon: const Icon(Icons.add), label: const Text('New')),
+        child: compact
+            ? FilledButton(
+                onPressed: () {},
+                style: FilledButton.styleFrom(minimumSize: const Size(40, 40), padding: EdgeInsets.zero),
+                child: const Icon(Icons.add),
+              )
+            : FilledButton.icon(onPressed: () {}, icon: const Icon(Icons.add), label: const Text('New')),
       ),
     );
   }

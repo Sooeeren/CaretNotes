@@ -5,6 +5,7 @@ import 'package:caret_notes/core/paper.dart';
 import 'package:caret_notes/ui/editor/editor_controller.dart';
 import 'package:caret_notes/ui/editor/editor_shortcuts.dart';
 import 'package:caret_notes/ui/editor/text_box.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -104,5 +105,26 @@ void main() {
       expect(moved.lineHeight, 30);
       expect(moved.rect.top % 30, 0);
     });
+  });
+
+  testWidgets('tapping the formatting bar keeps the text box in editing', (tester) async {
+    final c = make();
+    final pid = c.note.pages.first.id;
+    final el = c.addText(pid, const Vec2(100, 100), mode: TextMode.box);
+    var done = 0;
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: TextBoxEditor(el: el, onChanged: (md, h) => c.typeText(pid, el.id, md, h), onDone: () => done++),
+      ),
+    ));
+    await tester.pump();
+    await tester.enterText(find.byType(TextField), 'word');
+    await tester.pump();
+    for (final kind in [PointerDeviceKind.mouse, PointerDeviceKind.stylus]) {
+      await tester.tap(find.byTooltip('Bold'), kind: kind);
+      await tester.pump();
+    }
+    expect(done, 0, reason: 'the bar belongs to the text box, so tapping it is not "outside"');
+    expect((c.note.pages.first.find(el.id) as TextEl).markdown, contains('**'));
   });
 }

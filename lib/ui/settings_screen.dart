@@ -115,16 +115,29 @@ class SettingsScreen extends StatelessWidget {
               ),
               ListTile(
                 title: const Text('Toolbar position'),
-                subtitle: const Text('You can also hold the toolbar and drag it while writing'),
+                subtitle: const Text('You can also drag the toolbar by its grip, or hold it, and drop it at an edge'),
                 trailing: DropdownButton<ToolbarDock>(
                   value: s.toolbarDock,
                   items: const [
                     DropdownMenuItem(value: ToolbarDock.top, child: Text('Top')),
+                    DropdownMenuItem(value: ToolbarDock.bottom, child: Text('Bottom')),
                     DropdownMenuItem(value: ToolbarDock.left, child: Text('Left')),
                     DropdownMenuItem(value: ToolbarDock.right, child: Text('Right')),
                     DropdownMenuItem(value: ToolbarDock.floating, child: Text('Floating')),
                   ],
                   onChanged: (v) => sc.update((x) => x.copyWith(toolbarDock: v)),
+                ),
+              ),
+              ListTile(
+                title: const Text('Quick colors in the toolbar'),
+                subtitle: const Text('Your most recent pen colors, one tap away. The palette button next to them picks any color.'),
+                trailing: DropdownButton<int>(
+                  value: s.quickColors,
+                  items: [
+                    for (var n = 0; n <= AppSettings.maxQuickColors; n++)
+                      DropdownMenuItem(value: n, child: Text(n == 0 ? 'None' : '$n')),
+                  ],
+                  onChanged: (v) => sc.update((x) => x.copyWith(quickColors: v)),
                 ),
               ),
             ]),

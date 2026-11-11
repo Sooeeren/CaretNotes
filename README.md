@@ -52,6 +52,9 @@ Or build it yourself with Flutter: see [docs/BUILDING.md](docs/BUILDING.md).
 - **Hold to straighten:** pause at the end of a line and it snaps straight. Rough rectangles,
   circles, triangles and arrows become clean shapes.
 - **Ruler** you move and rotate with two fingers; lines drawn along it stick to it.
+- **A toolbar that stays out of the way:** your recent colors one tap away (any color from the
+  color wheel), and you drag it by its grip to the top, bottom, left or right edge. Full screen
+  hides everything else.
 - **Type on the lines** or in free text boxes, with live Markdown: headings, bold, lists, checkboxes,
   code, tables and LaTeX math.
 - **Paper for every class:** lined, Cornell, grid, dots, music staff and more, in four paper colors.
@@ -59,6 +62,13 @@ Or build it yourself with Flutter: see [docs/BUILDING.md](docs/BUILDING.md).
 - **PDF lecture slides:** import them, write on them, export again with vector ink and real text.
 - **Images:** paste, drag in, crop, rotate, put behind the ink.
 - **Library:** nested folders with colors and icons, favorites, search, and Recently deleted (30 days).
+
+## Pens and colors
+
+Tap the pen again for its panel: a live preview of the stroke, pen type and size, and your colors
+in pages you flip through with the arrows. Pick any other color on the color wheel.
+
+![The pen panel with a stroke preview, pen types, size and a page of colors](docs/screenshots/pen.png)
 
 ## Typing on the lines
 

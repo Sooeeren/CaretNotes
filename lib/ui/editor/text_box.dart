@@ -408,7 +408,10 @@ class _TextBoxEditorState extends State<TextBoxEditor> {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
       SizedBox(
         height: textBarHeight - 4,
-        child: Align(alignment: Alignment.topLeft, child: FittedBox(fit: BoxFit.scaleDown, child: _bar(context))),
+        // Part of the text field: a tap on the bar is not a tap "outside", which would end typing.
+        child: TextFieldTapRegion(
+          child: Align(alignment: Alignment.topLeft, child: FittedBox(fit: BoxFit.scaleDown, child: _bar(context))),
+        ),
       ),
       const SizedBox(height: 4),
       _field(context, color),

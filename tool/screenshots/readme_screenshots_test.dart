@@ -221,6 +221,19 @@ void main() {
     await _shot(tester, 'text');
   });
 
+  testWidgets('pen panel: stroke preview and color pages', (tester) async {
+    env = (await tester.runAsync(_library))!;
+    await tester.pumpWidget(env.app());
+    await _settle(tester);
+    await _openEditor(tester, env.notes['lecture']!);
+    // The pen is already in hand when a note opens, so one tap shows its panel.
+    await tester.tap(find.byTooltip('Pen (tap again for type, size and color)'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.byType(PenOptions), findsOneWidget);
+    await _shot(tester, 'pen');
+  });
+
   testWidgets('dark mode with Cornell paper', (tester) async {
     env = (await tester.runAsync(() => _library(theme: ThemePref.dark)))!;
     await tester.pumpWidget(env.app());

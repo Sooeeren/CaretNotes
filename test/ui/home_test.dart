@@ -57,4 +57,35 @@ void main() {
       }
     });
   });
+
+  testWidgets('a small window keeps the home header usable: search folds into a button', (tester) async {
+    // The narrowest window (480) minus the window buttons, which tests don't show.
+    tester.view.physicalSize = const Size(360, 700);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    late Directory tmp;
+    late LibraryController lib;
+    await tester.runAsync(() async {
+      tmp = await Directory.systemTemp.createTemp('cn_home_');
+      lib = LibraryController(LibraryStore(tmp.path));
+      await lib.refresh();
+    });
+    await tester.pumpWidget(MultiProvider(
+      providers: [
+        ChangeNotifierProvider<LibraryController>.value(value: lib),
+        ChangeNotifierProvider(create: (_) => SettingsController(const AppSettings(), null)),
+      ],
+      child: const MaterialApp(home: HomeScreen()),
+    ));
+    await tester.pump();
+    expect(tester.takeException(), isNull, reason: 'no overflow in the header');
+    expect(find.byType(TextField), findsNothing);
+    expect(find.byTooltip('Search'), findsOneWidget);
+    expect(find.byTooltip('More'), findsOneWidget, reason: 'select and grid/list fold into a menu');
+    await tester.runAsync(() async {
+      try {
+        await tmp.delete(recursive: true);
+      } catch (_) {}
+    });
+  });
 }

@@ -25,6 +25,17 @@ void main() {
     await dir.delete(recursive: true);
   });
 
+  test('three quick colors by default; the count and a bottom dock are saved', () async {
+    expect(const AppSettings().quickColors, 3);
+    final dir = await Directory.systemTemp.createTemp('cn_set_');
+    final path = '${dir.path}/settings.json';
+    await const AppSettings().copyWith(quickColors: 5, toolbarDock: ToolbarDock.bottom).save(path);
+    final back = await AppSettings.load(path);
+    expect(back.quickColors, 5);
+    expect(back.toolbarDock, ToolbarDock.bottom);
+    await dir.delete(recursive: true);
+  });
+
   test('the app draws its own title bar unless the system one is chosen', () async {
     expect(const AppSettings().nativeTitleBar, isFalse);
     final dir = await Directory.systemTemp.createTemp('cn_set_');

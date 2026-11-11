@@ -20,6 +20,8 @@ class WindowChrome {
   /// AppLifecycleListener.onExitRequested runs first (open notes are saved). Tests swap it.
   static Future<void> Function() requestClose = () => ServicesBinding.instance.exitApplication(ui.AppExitType.cancelable);
 
+  static const minimumSize = Size(480, 400);
+
   static Window? get _window => supported ? WindowManager.instance.getCurrent() : null;
 
   /// Hides or restores the system title bar.
@@ -27,7 +29,35 @@ class WindowChrome {
     final w = _window;
     if (w == null) return;
     w.titleBarStyle = custom ? TitleBarStyle.hidden : TitleBarStyle.normal;
+    // Small enough for half a laptop screen, big enough that headers keep room to grab.
+    w.minimumSize = minimumSize.toNative();
     active.value = custom;
+  }
+
+  /// Full screen: the window covers the whole display (Windows), or the system bars
+  /// hide (Android). Nothing happens in tests.
+  static Future<void> setFullScreen(bool on) async {
+    final w = _window;
+    if (w != null) {
+      w.isFullScreen = on;
+    } else if ((Platform.isAndroid || Platform.isIOS) && !Platform.environment.containsKey('FLUTTER_TEST')) {
+      await SystemChrome.setEnabledSystemUIMode(on ? SystemUiMode.immersiveSticky : SystemUiMode.edgeToEdge);
+    }
+  }
+}
+
+/// A label inside a header that should move the window too: a drag on it moves the
+/// window, a tap still reaches [child]. Small windows leave little empty header to grab.
+class CaptionDrag extends StatelessWidget {
+  final Widget child;
+  const CaptionDrag({super.key, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<bool>(
+      valueListenable: WindowChrome.active,
+      builder: (context, on, _) => on ? DragToMoveArea(child: child) : child,
+    );
   }
 }
 

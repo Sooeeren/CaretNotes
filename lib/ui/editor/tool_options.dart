@@ -1,8 +1,14 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
+import '../../core/color_math.dart';
+import '../../core/ink/stroke_geometry.dart';
 import '../../core/model/elements.dart';
 import '../../core/settings.dart';
+import 'color_wheel.dart';
 import 'editor_controller.dart';
+import 'painters.dart';
 
 const highlighterColors = [0xFFFFE14D, 0xFF8BE36B, 0xFFFF8BC2, 0xFF6EC8FF, 0xFFFFB054];
 
@@ -21,20 +27,26 @@ Future<void> showToolOptions(BuildContext context, Widget child) {
     context: context,
     barrierColor: Colors.transparent,
     builder: (ctx) {
-      final left = pos.dx.clamp(8.0, size.width - 328);
+      final left = pos.dx.clamp(8.0, math.max(8.0, size.width - 328));
       final below = pos.dy + box.size.height + 8;
-      final top = below + 360 > size.height ? (pos.dy - 368).clamp(8.0, size.height - 368) : below;
+      final top = below + 470 > size.height ? (pos.dy - 478).clamp(8.0, math.max(8.0, size.height - 478)) : below;
       final right = pos.dx > size.width - 120;
       return Stack(children: [
         Positioned(
           left: right ? null : left.toDouble(),
           right: right ? size.width - pos.dx + 8 : null,
-          top: right ? pos.dy.clamp(8.0, size.height - 368) : top.toDouble(),
+          top: right ? pos.dy.clamp(8.0, math.max(8.0, size.height - 478)) : top.toDouble(),
           child: Material(
             elevation: 8,
             borderRadius: BorderRadius.circular(20),
             color: Theme.of(ctx).colorScheme.surfaceContainerLow,
-            child: Padding(padding: const EdgeInsets.all(16), child: SizedBox(width: 288, child: child)),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxHeight: math.max(120.0, size.height - 16)),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: SizedBox(width: 288, child: child),
+              ),
+            ),
           ),
         ),
       ]);
@@ -76,18 +88,39 @@ class PenOptions extends StatefulWidget {
 }
 
 class _PenOptionsState extends State<PenOptions> {
+  static const _perPage = 10;
+  late int _page;
+
+  List<List<int>> get _pages => colorPages(widget.settings.penColors, extraColors, perPage: _perPage);
+
+  @override
+  void initState() {
+    super.initState();
+    // Start on the page that holds the current color.
+    _page = _pages.indexWhere((p) => p.contains(widget.c.penColor)).clamp(0, _pages.length - 1);
+  }
+
+  void _pick(int col) {
+    setState(() => widget.c.update(() => widget.c.penColor = col));
+    widget.onColorsChanged(col);
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = widget.c;
     final t = Theme.of(context);
+    final pages = _pages;
+    final page = _page.clamp(0, pages.length - 1);
     return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text('Pen', style: t.textTheme.titleSmall),
       const SizedBox(height: 8),
+      PenPreview(kind: c.penKind, width: c.penWidth, color: c.penColor),
+      const SizedBox(height: 10),
       SegmentedButton<ToolKind>(
         segments: const [
-          ButtonSegment(value: ToolKind.pen, label: Text('Pen'), icon: Icon(Icons.edit)),
-          ButtonSegment(value: ToolKind.fineliner, label: Text('Fine'), icon: Icon(Icons.edit_outlined)),
-          ButtonSegment(value: ToolKind.pencil, label: Text('Pencil'), icon: Icon(Icons.create)),
+          ButtonSegment(value: ToolKind.pen, label: Text('Pen'), icon: Icon(Icons.edit_outlined)),
+          ButtonSegment(value: ToolKind.fineliner, label: Text('Fine'), icon: Icon(Icons.drive_file_rename_outline)),
+          ButtonSegment(value: ToolKind.pencil, label: Text('Pencil'), icon: Icon(Icons.create_outlined)),
         ],
         selected: {c.penKind},
         showSelectedIcon: false,
@@ -96,17 +129,97 @@ class _PenOptionsState extends State<PenOptions> {
       const SizedBox(height: 12),
       Text('Size ${c.penWidth.toStringAsFixed(1)}', style: t.textTheme.labelMedium),
       Slider(value: c.penWidth, min: 0.6, max: 12, onChanged: (v) => setState(() => c.update(() => c.penWidth = v))),
-      Text('Colors', style: t.textTheme.labelMedium),
-      const SizedBox(height: 6),
-      Wrap(spacing: 8, runSpacing: 8, children: [
-        for (final col in {...widget.settings.penColors, ...extraColors})
-          _Swatch(col, c.penColor == col, () {
-            setState(() => c.update(() => c.penColor = col));
-            widget.onColorsChanged(col);
-          }),
+      Row(children: [
+        Text('Colors', style: t.textTheme.labelMedium),
+        const Spacer(),
+        Text('${page + 1} / ${pages.length}', style: t.textTheme.labelSmall),
       ]),
+      const SizedBox(height: 6),
+      Row(children: [
+        IconButton(
+          tooltip: 'Previous colors',
+          visualDensity: VisualDensity.compact,
+          icon: const Icon(Icons.chevron_left),
+          onPressed: page > 0 ? () => setState(() => _page = page - 1) : null,
+        ),
+        Expanded(
+          child: SizedBox(
+            height: 68,
+            child: Center(
+              child: Wrap(spacing: 8, runSpacing: 8, children: [
+                for (final col in pages[page]) _Swatch(col, c.penColor == col, () => _pick(col)),
+              ]),
+            ),
+          ),
+        ),
+        IconButton(
+          tooltip: 'Next colors',
+          visualDensity: VisualDensity.compact,
+          icon: const Icon(Icons.chevron_right),
+          onPressed: page < pages.length - 1 ? () => setState(() => _page = page + 1) : null,
+        ),
+      ]),
+      const SizedBox(height: 4),
+      Center(
+        child: TextButton.icon(
+          icon: const Icon(Icons.palette_outlined, size: 18),
+          label: const Text('Custom color…'),
+          onPressed: () async {
+            final col = await showColorWheel(context, c.penColor);
+            if (col != null && mounted) _pick(col);
+          },
+        ),
+      ),
     ]);
   }
+}
+
+/// A sample stroke drawn with the pen's type, size and color, like the real ink.
+class PenPreview extends StatelessWidget {
+  final ToolKind kind;
+  final double width;
+  final int color;
+  const PenPreview({super.key, required this.kind, required this.width, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 64,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        // Paper, so dark and light inks both show.
+        color: const Color(0xFFFCFBF8),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Theme.of(context).dividerColor),
+      ),
+      child: CustomPaint(painter: _PreviewPainter(kind, width, color)),
+    );
+  }
+}
+
+class _PreviewPainter extends CustomPainter {
+  final ToolKind kind;
+  final double width;
+  final int color;
+  _PreviewPainter(this.kind, this.width, this.color);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const n = 48;
+    final pts = <InkPoint>[];
+    for (var i = 0; i <= n; i++) {
+      final f = i / n;
+      final x = 18 + f * (size.width - 36);
+      final y = size.height / 2 + math.sin(f * math.pi * 2.2) * size.height * 0.22;
+      // Light at the ends, firm in the middle, as when writing.
+      final p = 0.35 + 0.65 * math.sin(f * math.pi);
+      pts.add(InkPoint(x, y, p));
+    }
+    canvas.drawPath(pathFromOutline(strokeOutline(pts, width, kind)), strokePaint(kind, color));
+  }
+
+  @override
+  bool shouldRepaint(_PreviewPainter old) => old.kind != kind || old.width != width || old.color != color;
 }
 
 class HighlighterOptions extends StatefulWidget {
@@ -182,8 +295,8 @@ class _SelectOptionsState extends State<SelectOptions> {
       const SizedBox(height: 8),
       SegmentedButton<SelectMode>(
         segments: const [
-          ButtonSegment(value: SelectMode.lasso, label: Text('Lasso'), icon: Icon(Icons.gesture)),
           ButtonSegment(value: SelectMode.box, label: Text('Box'), icon: Icon(Icons.highlight_alt)),
+          ButtonSegment(value: SelectMode.lasso, label: Text('Lasso'), icon: Icon(Icons.gesture)),
         ],
         selected: {c.selectMode},
         showSelectedIcon: false,

@@ -87,7 +87,7 @@ class EditorController extends ChangeNotifier {
   double hlWidth = 14;
   bool eraserPartial = false;
   double eraserSize = 8;
-  SelectMode selectMode = SelectMode.lasso;
+  SelectMode selectMode = SelectMode.box;
   TextMode textMode = TextMode.lines;
   bool rulerVisible = false;
 
