@@ -1,5 +1,5 @@
 ; CaretNotes installer (Inno Setup 6). Built by packaging\windows\build.ps1:
-;   ISCC /DAppVersion=1.3.0 /DSourceDir=<Release folder + VC++ runtime> caretnotes.iss
+;   ISCC /DAppVersion=0.2.0 /DSourceDir=<Release folder + VC++ runtime> caretnotes.iss
 ; Installs per user (no admin prompt), so the in-app updater can run it with /SILENT.
 ; Uninstalling never touches the notes in %APPDATA%\dev.caretnotes.
 

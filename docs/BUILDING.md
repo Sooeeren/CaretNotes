@@ -38,7 +38,7 @@ On Ubuntu 22.04 or newer (or another distro with the same packages):
 ```
 sudo apt install clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev libx11-dev libxi-dev
 flutter build linux --release                  # build/linux/x64/release/bundle/caret_notes
-bash packaging/linux/build.sh 1.3.0 out        # .deb, .rpm, Arch .pkg.tar.zst and .AppImage in out/
+bash packaging/linux/build.sh 0.2.0 out        # .deb, .rpm, Arch .pkg.tar.zst and .AppImage in out/
 ```
 
 `build.sh` needs [nfpm](https://nfpm.goreleaser.com) and [appimagetool](https://github.com/AppImage/appimagetool).

@@ -6,7 +6,7 @@ name: Release
 #            caretnotes-<v>-1-x86_64.pkg.tar.zst (Arch), CaretNotes-<v>-x86_64.AppImage
 #   Android  CaretNotes-<v>.apk
 # The in-app updater finds these by name (lib/core/update/update_check.dart).
-# Push a tag (git tag v1.3.0 && git push origin v1.3.0) to build and publish; run it by
+# Push a tag (git tag v0.2.0 && git push origin v0.2.0) to build and publish; run it by
 # hand with publish off to only build (the files are then under the run's artifacts).
 
 on:
