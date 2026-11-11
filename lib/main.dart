@@ -28,6 +28,7 @@ Future<void> main(List<String> args) async {
   }
 
   WindowChrome.apply(custom: !settings.nativeTitleBar);
+  WindowChrome.listenForClose();
 
   final store = LibraryStore(p.join(support.path, 'library'));
   await store.ensureRoot();

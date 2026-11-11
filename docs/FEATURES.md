@@ -9,13 +9,13 @@
 
 ## Pen and ink
 
-- **Pens:** pressure-sensitive pen, fineliner and pencil, each with its own width and color. Tap the active pen again for its options.
+- **Pens:** pressure-sensitive pen, fineliner and pencil, each with its own width and color. Tap the active pen again for its options. Your recent colors sit in the tool pill; tap the chosen one again to change it (the old color shows next to the new one).
 - **Highlighter** that always stays behind your writing, so it never covers ink.
 - **Eraser:** whole strokes or partial, with an adjustable size.
 - **S Pen side button:** hold it for the eraser or for selection (Settings).
 - **Palm rejection:** while the pen is down or hovering, and for half a second after it lifts, touches are ignored. A palm that was already resting when the pen arrived is cancelled too.
 - **Hold to straighten:** keep the pen still at the end of a line and it snaps straight. Rough rectangles, circles, triangles and arrows become clean shapes. Keep moving the pen before lifting to adjust the shape.
-- **Ruler:** move and rotate it with two fingers. It snaps to 0°, 45° and 90°, shows the angle and centimeter marks, and lines drawn near its edge stick to it.
+- **Ruler:** move and rotate it with two fingers; spread or pinch them to make it longer or shorter (5–60 cm). It snaps to 0°, 45° and 90°, shows the angle and centimeter marks, and lines drawn near its edge stick to it.
 
 ## Selection
 
@@ -38,6 +38,7 @@ The template picker (⋮ → **Paper template…**) shows a preview of every pap
 | --- | --- |
 | Blank | Sketches, slides |
 | Lined, narrow lined, wide lined | Writing; with a notebook margin |
+| Plain lined | Writing across the whole width, no red margin line |
 | Cornell | Cue column, notes and a summary area at the bottom |
 | Grid 5 mm, grid 1 cm | Math, diagrams |
 | Dots | Bullet journals, sketches |
@@ -59,6 +60,8 @@ Choose white, cream, mint or dark paper and fine-tune the spacing. A template ca
 ## Export
 
 - **PDF** with vector ink, real (searchable) text, and imported PDF pages at their original quality.
+- A **preview** shows every page before you save.
+- Endless pages and split canvases are cut into A4 pages **between lines of writing**: a page ends a little early (with empty space) rather than cutting handwriting in half.
 - **PNG or JPG** of a page or a selection.
 
 ## Library

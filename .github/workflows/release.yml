@@ -5,6 +5,8 @@ name: Release
 #   Linux    caretnotes_<v>_amd64.deb, caretnotes-<v>-1.x86_64.rpm,
 #            caretnotes-<v>-1-x86_64.pkg.tar.zst (Arch), CaretNotes-<v>-x86_64.AppImage
 #   Android  CaretNotes-<v>.apk
+#   release.json  the release as the GitHub API describes it (names, sizes, SHA-256);
+#            the updater reads it when the API is rate-limited
 # The in-app updater finds these by name (lib/core/update/update_check.dart).
 # Push a tag (git tag v0.2.0 && git push origin v0.2.0) to build and publish; run it by
 # hand with publish off to only build (the files are then under the run's artifacts).
@@ -144,6 +146,13 @@ jobs:
           ls -lh out
           NOTES="docs/release-notes/v$V.md"
           [ -f "$NOTES" ] || { echo "::error::$NOTES is missing"; exit 1; }
+          BASE="https://github.com/$GITHUB_REPOSITORY/releases"
+          for f in out/*; do
+            n=$(basename "$f")
+            jq -n --arg name "$n" --arg url "$BASE/download/v$V/$n" --argjson size "$(stat -c%s "$f")"               --arg digest "sha256:$(sha256sum "$f" | cut -d' ' -f1)"               '{name: $name, browser_download_url: $url, size: $size, digest: $digest}'
+          done | jq -s . > assets.json
+          jq -n --arg tag "v$V" --rawfile body "$NOTES" --arg url "$BASE/tag/v$V" --slurpfile assets assets.json             '{tag_name: $tag, body: $body, html_url: $url, assets: $assets[0]}' > release.json
+          mv release.json out/
           if gh release view "v$V" >/dev/null 2>&1; then
             gh release upload "v$V" out/* --clobber
           else

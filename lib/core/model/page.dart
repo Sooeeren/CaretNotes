@@ -1,8 +1,9 @@
 import '../ids.dart';
 import 'elements.dart';
 
-/// Paper kinds. Cornell and staff were added in format 2.
-enum TemplateKind { blank, lined, grid, dots, cornell, staff }
+/// Paper kinds. Cornell and staff were added in format 2; [linedPlain] (lined, no red
+/// margin line) in 0.2.1. Older versions read kinds they don't know as [lined].
+enum TemplateKind { blank, lined, grid, dots, cornell, staff, linedPlain }
 
 class Template {
   final TemplateKind kind;

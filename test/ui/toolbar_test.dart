@@ -1,3 +1,6 @@
+import 'dart:math' as math;
+
+import 'package:caret_notes/core/geometry.dart';
 import 'package:caret_notes/core/model/elements.dart';
 import 'package:caret_notes/core/model/note.dart';
 import 'package:caret_notes/core/settings.dart';
@@ -16,7 +19,9 @@ EditorController make() => EditorController(
   deviceName: 't',
 );
 
-Widget host(EditorController c, AppSettings s, {ValueChanged<int>? onColor, ValueChanged<Offset>? onDragStart}) => MaterialApp(
+Widget host(EditorController c, AppSettings s,
+        {ValueChanged<int>? onColor, ValueChanged<Offset>? onDragStart, void Function(int, int)? onReplace}) =>
+    MaterialApp(
   theme: buildTheme(const Color(0xFFD9772B), Brightness.light),
   home: Scaffold(
     body: ListenableBuilder(
@@ -30,6 +35,7 @@ Widget host(EditorController c, AppSettings s, {ValueChanged<int>? onColor, Valu
           onDragUpdate: (_) {},
           onDragEnd: (_) {},
           onPenColorsChanged: onColor ?? (_) {},
+          onReplaceColor: onReplace,
         ),
       ),
     ),
@@ -116,5 +122,55 @@ void main() {
     await tester.pumpWidget(host(make(), const AppSettings(), onDragStart: starts.add));
     await tester.drag(find.byTooltip('Drag to move the toolbar'), const Offset(0, 300));
     expect(starts, hasLength(1));
+  });
+
+  testWidgets('tapping the chosen quick color again changes it, showing the color it had', (tester) async {
+    final c = make()..setTool(EditorTool.pen);
+    c.penColor = 0xFF3B6FE0;
+    final replaced = <(int, int)>[];
+    await tester.pumpWidget(host(c, const AppSettings(penColors: [0xFF111111, 0xFF3B6FE0, 0xFFD23B3B]),
+        onReplace: (a, b) => replaced.add((a, b))));
+    await tester.tap(find.byType(QuickColor).at(1));
+    await tester.pumpAndSettle();
+    expect(find.byType(ColorWheel), findsOneWidget);
+    expect(find.text('Before'), findsOneWidget);
+    expect(find.byKey(const ValueKey('color-before')), findsOneWidget);
+    final before = tester.widget<Container>(find.byKey(const ValueKey('color-before')));
+    expect((before.decoration as BoxDecoration).color, const Color(0xFF3B6FE0));
+    await tester.enterText(find.byType(TextField), '#12AB34');
+    await tester.pump();
+    await tester.tap(find.text('Use color'));
+    await tester.pumpAndSettle();
+    expect(replaced, [(0xFF3B6FE0, 0xFF12AB34)]);
+    expect(c.penColor, 0xFF12AB34);
+  });
+
+  test('the pen preview is drawn large enough that the pen types look different', () {
+    double area(List<Vec2> o) {
+      var a = 0.0;
+      for (var i = 0; i < o.length; i++) {
+        final p = o[i], q = o[(i + 1) % o.length];
+        a += p.x * q.y - q.x * p.y;
+      }
+      return a.abs() / 2;
+    }
+
+    double thickest(List<Vec2> o) {
+      final ys = o.map((v) => v.y);
+      return ys.reduce(math.max) - ys.reduce(math.min);
+    }
+
+    const size = Size(286, 64);
+    final pen = penPreviewOutline(ToolKind.pen, 2.4, size);
+    final fine = penPreviewOutline(ToolKind.fineliner, 2.4, size);
+    final pencil = penPreviewOutline(ToolKind.pencil, 2.4, size);
+    // a 2.4 pt pen is shown several pixels thick, not as a hairline
+    expect(area(fine) / (size.width - 36), greaterThan(6));
+    // the pen swells with pressure, the fineliner doesn't: clearly different amounts of ink
+    expect(area(pen) / area(fine), lessThan(0.85));
+    expect(area(pencil), greaterThan(area(pen)));
+    expect(area(pencil), lessThan(area(fine)));
+    // a fat pen still fits the box
+    expect(thickest(penPreviewOutline(ToolKind.pen, 12, size)), lessThanOrEqualTo(size.height));
   });
 }

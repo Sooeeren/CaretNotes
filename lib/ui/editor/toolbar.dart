@@ -163,6 +163,9 @@ class ToolPill extends StatelessWidget {
   final void Function(Offset global) onDragEnd;
   final ValueChanged<int> onPenColorsChanged;
 
+  /// A quick color was changed in place (tap the chosen one again): old, new.
+  final void Function(int old, int now)? onReplaceColor;
+
   const ToolPill({
     super.key,
     required this.c,
@@ -172,6 +175,7 @@ class ToolPill extends StatelessWidget {
     required this.onDragUpdate,
     required this.onDragEnd,
     required this.onPenColorsChanged,
+    this.onReplaceColor,
   });
 
   /// A quick color applies to the highlighter while it's in hand, otherwise to the pen
@@ -184,6 +188,18 @@ class ToolPill extends StatelessWidget {
     c.update(() => c.penColor = col);
     if (c.tool != EditorTool.pen || c.readOnly) c.setTool(EditorTool.pen);
     onPenColorsChanged(col);
+  }
+
+  /// Tapping the chosen quick color again opens the wheel to change that swatch.
+  Future<void> _editColor(BuildContext context, int old) async {
+    final col = await showColorWheel(context, old, title: 'Change this color');
+    if (col == null || col == old) return;
+    onReplaceColor?.call(old, col);
+    if (c.tool == EditorTool.highlighter && !c.readOnly) {
+      c.update(() => c.hlColor = col);
+    } else {
+      c.update(() => c.penColor = col);
+    }
   }
 
   @override
@@ -291,7 +307,12 @@ class ToolPill extends StatelessWidget {
         onTap: () => c.update(() => c.rulerVisible = !c.rulerVisible),
       ),
       divider(),
-      for (final col in quick) QuickColor(color: col, selected: col == activeColor, onTap: () => _useColor(col)),
+      for (final col in quick)
+        QuickColor(
+          color: col,
+          selected: col == activeColor,
+          onTap: () => col == activeColor && !c.readOnly ? _editColor(context, col) : _useColor(col),
+        ),
       ToolButton(
         icon: Icons.palette_outlined,
         tooltip: 'Any color…',
@@ -398,24 +419,28 @@ class QuickColor extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = Theme.of(context);
     final size = selected ? 24.0 : 20.0;
-    return Padding(
-      padding: const EdgeInsets.all(1.5),
-      child: InkWell(
-        customBorder: const CircleBorder(),
-        onTap: onTap,
-        child: SizedBox(
-          width: 34,
-          height: 34,
-          child: Center(
-            child: Container(
-              width: size,
-              height: size,
-              decoration: BoxDecoration(
-                color: Color(color),
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: selected ? t.colorScheme.primary : AppTokens.of(context).hairline,
-                  width: selected ? 2.5 : 1,
+    return Tooltip(
+      message: selected ? 'Tap again to change this color' : 'Use this color',
+      waitDuration: const Duration(milliseconds: 600),
+      child: Padding(
+        padding: const EdgeInsets.all(1.5),
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: onTap,
+          child: SizedBox(
+            width: 34,
+            height: 34,
+            child: Center(
+              child: Container(
+                width: size,
+                height: size,
+                decoration: BoxDecoration(
+                  color: Color(color),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: selected ? t.colorScheme.primary : AppTokens.of(context).hairline,
+                    width: selected ? 2.5 : 1,
+                  ),
                 ),
               ),
             ),

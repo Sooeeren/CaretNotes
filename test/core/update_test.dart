@@ -108,6 +108,25 @@ void main() {
     test('a server error is reported', () async {
       expect(checker((_) => http.Response('rate limited', 403)).check(), throwsA(isA<UpdateException>()));
     });
+
+    test('when GitHub rate-limits the API, the release manifest download is used instead', () async {
+      final asked = <String>[];
+      final r = await checker((req) {
+        asked.add(req.url.toString());
+        if (req.url.host == 'api.github.com') return http.Response('{"message":"API rate limit exceeded"}', 403);
+        return http.Response(jsonEncode(release('v1.4.0', allAssets)), 200);
+      }).check();
+      expect(asked.last, 'https://github.com/Sooeeren/CaretNotes/releases/latest/download/release.json');
+      expect(r?.version.toString(), '1.4.0');
+      expect(r?.assetFor(InstallKind.windowsInstaller)?.name, 'CaretNotes-Setup-1.4.0.exe');
+    });
+
+    test('a rate limit without a manifest says so in plain words', () async {
+      await expectLater(
+        checker((req) => http.Response('nope', req.url.host == 'api.github.com' ? 429 : 404)).check(),
+        throwsA(isA<UpdateException>().having((e) => e.message, 'message', contains('Try again'))),
+      );
+    });
   });
 
   test('a download only passes when its SHA-256 matches', () {

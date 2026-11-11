@@ -16,12 +16,16 @@ double snapRulerAngle(double a) {
 
 /// On-screen ruler in document coordinates (points).
 class RulerGeom {
+  /// Default length; pinching with two fingers makes it longer or shorter.
   static const lengthPt = 20 * _cm;
+  static const minLengthPt = 5 * _cm;
+  static const maxLengthPt = 60 * _cm;
   static const thicknessPt = 2.2 * _cm;
 
   final Vec2 center;
   final double angle;
-  const RulerGeom({required this.center, required this.angle});
+  final double length;
+  const RulerGeom({required this.center, required this.angle, this.length = lengthPt});
 
   Vec2 get dir => Vec2(math.cos(angle), math.sin(angle));
   Vec2 get normal => Vec2(-math.sin(angle), math.cos(angle));
@@ -34,13 +38,13 @@ class RulerGeom {
 
   bool contains(Vec2 p, {double margin = 0}) {
     final (u, v) = local(p);
-    return u.abs() <= lengthPt / 2 + margin && v.abs() <= thicknessPt / 2 + margin;
+    return u.abs() <= length / 2 + margin && v.abs() <= thicknessPt / 2 + margin;
   }
 
   /// Which edge (-1 = top/left side, +1 = other side) [p] is near, within [threshold] points.
   int? edgeNear(Vec2 p, double threshold) {
     final (u, v) = local(p);
-    if (u.abs() > lengthPt / 2 + threshold) return null;
+    if (u.abs() > length / 2 + threshold) return null;
     final dist = v.abs() - thicknessPt / 2;
     if (dist > threshold) return null;
     return v < 0 ? -1 : 1;
@@ -52,9 +56,11 @@ class RulerGeom {
     return center + dir * u + normal * (side * thicknessPt / 2);
   }
 
-  RulerGeom copyWith({Vec2? center, double? angle}) => RulerGeom(center: center ?? this.center, angle: angle ?? this.angle);
+  RulerGeom copyWith({Vec2? center, double? angle, double? length}) =>
+      RulerGeom(center: center ?? this.center, angle: angle ?? this.angle, length: length ?? this.length);
 
-  /// New ruler pose after two fingers moved from (a0, b0) to (a1, b1).
+  /// New ruler pose after two fingers moved from (a0, b0) to (a1, b1): moved, turned, and
+  /// longer or shorter as the fingers spread or pinch.
   RulerGeom twoFinger(Vec2 a0, Vec2 b0, Vec2 a1, Vec2 b1) {
     final m0 = (a0 + b0) * 0.5, m1 = (a1 + b1) * 0.5;
     final d0 = b0 - a0, d1 = b1 - a1;
@@ -62,7 +68,9 @@ class RulerGeom {
     // rotate center about the old midpoint, then translate with the midpoint
     final c = center - m0;
     final rc = Vec2(c.x * math.cos(rot) - c.y * math.sin(rot), c.x * math.sin(rot) + c.y * math.cos(rot));
-    return RulerGeom(center: m1 + rc, angle: snapRulerAngle(angle + rot));
+    final s0 = d0.length;
+    final newLength = s0 < 1e-6 ? length : (length * d1.length / s0).clamp(minLengthPt, maxLengthPt);
+    return RulerGeom(center: m1 + rc, angle: snapRulerAngle(angle + rot), length: newLength);
   }
 
   double get degrees {
@@ -87,7 +95,7 @@ class RulerPainter extends CustomPainter {
     canvas.translate(c.dx, c.dy);
     canvas.rotate(ruler.angle);
     canvas.scale(scale);
-    final len = RulerGeom.lengthPt, th = RulerGeom.thicknessPt;
+    final len = ruler.length, th = RulerGeom.thicknessPt;
     final body = Rect.fromCenter(center: Offset.zero, width: len, height: th);
     final rr = RRect.fromRectAndRadius(body, const Radius.circular(6));
     canvas.drawRRect(rr, Paint()..color = (dark ? const Color(0xFF3A3F48) : const Color(0xFFF7F3E8)).withValues(alpha: 0.88));
@@ -128,6 +136,6 @@ class RulerPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(RulerPainter old) =>
-      old.ruler.center != ruler.center || old.ruler.angle != ruler.angle || old.scale != scale || old.dark != dark || true;
+  // Always: [toScreen] also moves with panning, which none of the fields show.
+  bool shouldRepaint(RulerPainter old) => true;
 }

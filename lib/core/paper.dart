@@ -66,12 +66,12 @@ PaperGeometry paperGeometry(Template t, RectD area, {RectD? page}) {
   final x0 = (area.left / s).floor() * s, y0 = (area.top / s).floor() * s;
   final headerY = page == null ? -double.infinity : page.top + headerHeight(s);
   switch (t.kind) {
-    case TemplateKind.lined:
+    case TemplateKind.lined || TemplateKind.linedPlain:
       for (var y = y0; y <= area.bottom; y += s) {
         if (y < headerY) continue;
         h(y);
       }
-      if (page != null) v(page.left + notebookMargin(s), y0: page.top, y1: page.bottom, w: 0.8, color: marginLineColor);
+      if (page != null && t.kind == TemplateKind.lined) v(page.left + notebookMargin(s), y0: page.top, y1: page.bottom, w: 0.8, color: marginLineColor);
     case TemplateKind.cornell:
       if (page == null) return paperGeometry(t.copyWith(kind: TemplateKind.lined), area);
       final summary = cornellSummaryY(page.width, page.height, s);
@@ -143,6 +143,8 @@ RuledFrame ruledFrameAt(Template t, Vec2 tap, {double? pageWidth, double? pageHe
     switch (t.kind) {
       case TemplateKind.lined:
         left = notebookMargin(s) + 6;
+      case TemplateKind.linedPlain:
+        left = s;
       case TemplateKind.cornell:
         final cue = cornellCueX(pageWidth);
         final summary = pageHeight == null ? null : cornellSummaryY(pageWidth, pageHeight, s);
@@ -179,6 +181,7 @@ const _mm = 2.83465;
 const paperPresets = [
   PaperPreset('Blank', TemplateKind.blank, 22),
   PaperPreset('Lined', TemplateKind.lined, 22),
+  PaperPreset('Plain lined', TemplateKind.linedPlain, 22),
   PaperPreset('Narrow lined', TemplateKind.lined, 6 * _mm),
   PaperPreset('Wide lined', TemplateKind.lined, 10 * _mm),
   PaperPreset('Cornell', TemplateKind.cornell, 22),

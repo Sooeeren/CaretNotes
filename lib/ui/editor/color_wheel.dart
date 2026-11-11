@@ -6,9 +6,10 @@ import '../../core/color_math.dart';
 import '../theme.dart';
 
 /// Opens the color wheel and returns the chosen color, or null when cancelled.
-Future<int?> showColorWheel(BuildContext context, int initial) => showDialog<int>(
+/// The swatch shows the color it started from ("Before") next to the new one.
+Future<int?> showColorWheel(BuildContext context, int initial, {String title = 'Pick a color'}) => showDialog<int>(
   context: context,
-  builder: (ctx) => _ColorWheelDialog(initial: initial),
+  builder: (ctx) => _ColorWheelDialog(initial: initial, title: title),
 );
 
 /// A hue/saturation wheel: the angle is the hue, the distance from the middle the
@@ -101,7 +102,8 @@ class _WheelPainter extends CustomPainter {
 
 class _ColorWheelDialog extends StatefulWidget {
   final int initial;
-  const _ColorWheelDialog({required this.initial});
+  final String title;
+  const _ColorWheelDialog({required this.initial, required this.title});
   @override
   State<_ColorWheelDialog> createState() => _ColorWheelDialogState();
 }
@@ -142,7 +144,7 @@ class _ColorWheelDialogState extends State<_ColorWheelDialog> {
     final t = Theme.of(context);
     final rgb = _color;
     return AlertDialog(
-      title: const Text('Pick a color'),
+      title: Text(widget.title),
       content: SizedBox(
         width: 260,
         child: Column(
@@ -160,15 +162,7 @@ class _ColorWheelDialogState extends State<_ColorWheelDialog> {
             ),
             Row(
               children: [
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: Color(rgb),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AppTokens.of(context).hairline),
-                  ),
-                ),
+                _BeforeAfter(before: widget.initial, after: rgb),
                 const SizedBox(width: 12),
                 Expanded(
                   child: TextField(
@@ -192,5 +186,34 @@ class _ColorWheelDialogState extends State<_ColorWheelDialog> {
         FilledButton(onPressed: () => Navigator.pop(context, parseHexColor(_hex.text) ?? rgb), child: const Text('Use color')),
       ],
     );
+  }
+}
+
+/// The starting color and the new one side by side, labelled, so a change is easy to judge.
+class _BeforeAfter extends StatelessWidget {
+  final int before, after;
+  const _BeforeAfter({required this.before, required this.after});
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context);
+    final line = AppTokens.of(context).hairline;
+    Widget half(Key key, int color, BorderRadius r) => Container(
+          key: key,
+          width: 30,
+          height: 36,
+          decoration: BoxDecoration(color: Color(color), borderRadius: r, border: Border.all(color: line)),
+        );
+    return Column(mainAxisSize: MainAxisSize.min, children: [
+      Row(mainAxisSize: MainAxisSize.min, children: [
+        half(const ValueKey('color-before'), before, const BorderRadius.horizontal(left: Radius.circular(8))),
+        half(const ValueKey('color-after'), after, const BorderRadius.horizontal(right: Radius.circular(8))),
+      ]),
+      const SizedBox(height: 2),
+      Row(mainAxisSize: MainAxisSize.min, children: [
+        SizedBox(width: 30, child: Text('Before', textAlign: TextAlign.center, style: t.textTheme.labelSmall?.copyWith(fontSize: 9))),
+        SizedBox(width: 30, child: Text('Now', textAlign: TextAlign.center, style: t.textTheme.labelSmall?.copyWith(fontSize: 9))),
+      ]),
+    ]);
   }
 }

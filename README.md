@@ -51,13 +51,13 @@ Or build it yourself with Flutter: see [docs/BUILDING.md](docs/BUILDING.md).
   behind your writing; whole-stroke and partial eraser; S Pen side button; palm rejection.
 - **Hold to straighten:** pause at the end of a line and it snaps straight. Rough rectangles,
   circles, triangles and arrows become clean shapes.
-- **Ruler** you move and rotate with two fingers; lines drawn along it stick to it.
+- **Ruler** you move, rotate and resize with two fingers; lines drawn along it stick to it.
 - **A toolbar that stays out of the way:** your recent colors one tap away (any color from the
   color wheel), and you drag it by its grip to the top, bottom, left or right edge. Full screen
   hides everything else.
 - **Type on the lines** or in free text boxes, with live Markdown: headings, bold, lists, checkboxes,
   code, tables and LaTeX math.
-- **Paper for every class:** lined, Cornell, grid, dots, music staff and more, in four paper colors.
+- **Paper for every class:** lined (with or without the red margin), Cornell, grid, dots, music staff and more, in four paper colors.
 - **Pages, an endless page, or an infinite canvas.**
 - **PDF lecture slides:** import them, write on them, export again with vector ink and real text.
 - **Images:** paste, drag in, crop, rotate, put behind the ink.

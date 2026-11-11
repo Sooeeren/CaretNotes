@@ -30,4 +30,11 @@ void main() {
     ]);
     expect(colorPages(const [], const [], perPage: 4), [<int>[]]);
   });
+
+  test('changing a quick color keeps its place; a color already listed is not repeated', () {
+    expect(replaceColor([1, 2, 3, 4], 2, 9), [1, 9, 3, 4]);
+    expect(replaceColor([1, 2, 3, 4], 2, 4), [1, 4, 3]);
+    expect(replaceColor([1, 2, 3], 7, 9), [9, 1, 2, 3], reason: 'unknown slot: the new color goes first');
+    expect(replaceColor([1, 2, 3], 2, 2), [1, 2, 3]);
+  });
 }

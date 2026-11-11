@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../core/color_math.dart';
+import '../../core/geometry.dart';
 import '../../core/ink/stroke_geometry.dart';
 import '../../core/model/elements.dart';
 import '../../core/settings.dart';
@@ -197,6 +198,25 @@ class PenPreview extends StatelessWidget {
   }
 }
 
+/// The preview stroke's outline in pixels of a [size] box. It is drawn enlarged (a thin
+/// pen at 1:1 is a hairline where the types can't be told apart) and pressed lightly at
+/// the ends and firmly in the middle, so the pen's swell, the even fineliner and the
+/// lighter pencil show.
+List<Vec2> penPreviewOutline(ToolKind kind, double width, Size size) {
+  final zoom = (18 / width).clamp(1.0, 3.0);
+  final w = math.min(width * zoom, size.height * 0.45);
+  final amp = math.max(0.0, size.height / 2 - w / 2 - 4);
+  const n = 64;
+  final pts = <InkPoint>[];
+  for (var i = 0; i <= n; i++) {
+    final f = i / n;
+    final x = 18 + f * (size.width - 36);
+    final y = size.height / 2 + math.sin(f * math.pi * 2.2) * math.min(amp, size.height * 0.22);
+    pts.add(InkPoint(x, y, 0.08 + 0.92 * math.sin(f * math.pi)));
+  }
+  return strokeOutline(pts, w, kind);
+}
+
 class _PreviewPainter extends CustomPainter {
   final ToolKind kind;
   final double width;
@@ -205,17 +225,7 @@ class _PreviewPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    const n = 48;
-    final pts = <InkPoint>[];
-    for (var i = 0; i <= n; i++) {
-      final f = i / n;
-      final x = 18 + f * (size.width - 36);
-      final y = size.height / 2 + math.sin(f * math.pi * 2.2) * size.height * 0.22;
-      // Light at the ends, firm in the middle, as when writing.
-      final p = 0.35 + 0.65 * math.sin(f * math.pi);
-      pts.add(InkPoint(x, y, p));
-    }
-    canvas.drawPath(pathFromOutline(strokeOutline(pts, width, kind)), strokePaint(kind, color));
+    canvas.drawPath(pathFromOutline(penPreviewOutline(kind, width, size)), strokePaint(kind, color));
   }
 
   @override

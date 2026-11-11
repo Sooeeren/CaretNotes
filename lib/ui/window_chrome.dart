@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:win32/win32.dart' as win;
 import 'package:window_manager/window_manager.dart';
 
 /// The app's own title bar, as in CaretFlow: no system caption, the window buttons sit
@@ -18,9 +19,43 @@ class WindowChrome {
 
   /// What the close button does. Asks the app to exit as if the window were closed, so
   /// AppLifecycleListener.onExitRequested runs first (open notes are saved). Tests swap it.
-  static Future<void> Function() requestClose = () => ServicesBinding.instance.exitApplication(ui.AppExitType.cancelable);
+  static Future<void> Function() requestClose = _close;
+
+  /// On Windows this sends the window the same WM_CLOSE as the system close button, so
+  /// every way of closing takes one path: the runner asks [_onCloseRequested] first (open
+  /// notes save), then the window closes at once. `exitApplication` took 4–7 s to close it.
+  static Future<void> _close() async {
+    final w = _window;
+    if (w != null) {
+      try {
+        final top = win.GetAncestor(win.HWND(w.nativeObject), win.GA_ROOT);
+        if (win.IsWindow(top) && win.PostMessage(top, win.WM_CLOSE, const win.WPARAM(0), const win.LPARAM(0)).value) return;
+      } catch (_) {
+        // fall back below
+      }
+    }
+    await ServicesBinding.instance.exitApplication(ui.AppExitType.cancelable);
+  }
 
   static const minimumSize = Size(480, 400);
+
+  static const _channel = MethodChannel('caretnotes/window');
+
+  /// Answers the Windows runner, which holds every close (close button, Alt+F4, taskbar)
+  /// until the app said yes. Call once at startup.
+  static void listenForClose() {
+    if (!Platform.isWindows) return;
+    _channel.setMethodCallHandler((call) async {
+      if (call.method != 'requestClose') return null;
+      // Runs AppLifecycleListener.onExitRequested: the open note saves here.
+      var answer = ui.AppExitResponse.exit;
+      try {
+        answer = await WidgetsBinding.instance.handleRequestAppExit();
+      } catch (_) {}
+      await _channel.invokeMethod<void>(answer == ui.AppExitResponse.exit ? 'closeNow' : 'cancelClose');
+      return null;
+    });
+  }
 
   static Window? get _window => supported ? WindowManager.instance.getCurrent() : null;
 

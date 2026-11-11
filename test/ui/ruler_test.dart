@@ -44,4 +44,18 @@ void main() {
     expect(m.angle, closeTo(0.5, 1e-9));
     expect(m.center.x, greaterThan(100));
   });
+
+  test('pinching the ruler makes it longer or shorter, within limits', () {
+    const r = RulerGeom(center: Vec2(100, 100), angle: 0);
+    expect(r.length, RulerGeom.lengthPt);
+    // fingers move apart to twice the distance: twice as long, still the same angle
+    final longer = r.twoFinger(const Vec2(50, 100), const Vec2(150, 100), const Vec2(0, 100), const Vec2(200, 100));
+    expect(longer.length, closeTo(2 * RulerGeom.lengthPt, 1e-6));
+    expect(longer.angle, closeTo(0, 1e-9));
+    expect(longer.contains(Vec2(100 + RulerGeom.lengthPt * 0.9, 100)), isTrue);
+    final shorter = r.twoFinger(const Vec2(50, 100), const Vec2(150, 100), const Vec2(90, 100), const Vec2(110, 100));
+    expect(shorter.length, RulerGeom.minLengthPt);
+    final huge = r.twoFinger(const Vec2(99, 100), const Vec2(101, 100), const Vec2(0, 100), const Vec2(400, 100));
+    expect(huge.length, RulerGeom.maxLengthPt);
+  });
 }

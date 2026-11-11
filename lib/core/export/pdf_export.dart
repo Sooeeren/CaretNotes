@@ -20,13 +20,56 @@ enum CanvasExport { onePage, tiles }
 /// Renders an imported PDF page to PNG at [px] width (fallback when stamping isn't possible).
 typedef PdfPageRaster = Future<Uint8List?> Function(PdfRef ref, int px);
 
-/// One output sheet: a region of one note page.
+/// One output sheet: a region ([area]) of one note page, drawn at the sheet's top.
+/// A sheet can be taller than its area: it then ends in empty paper, because the
+/// writing below the area goes on the next sheet instead of being cut in half.
 class ExportSheet {
   final NotePage page;
   final RectD area;
-  const ExportSheet(this.page, this.area);
+
+  /// The sheet's height when it is taller than [area].
+  final double? sheetHeight;
+  const ExportSheet(this.page, this.area, {this.sheetHeight});
   double get width => area.width;
-  double get height => area.height;
+  double get height => math.max(sheetHeight ?? 0, area.height);
+}
+
+/// Where to end a sheet that would end at [y] (no higher than [minY]): [y] itself
+/// when no element crosses it, otherwise just above the element that does, picking
+/// the height that cuts through the fewest elements (the lowest one on a tie).
+double sheetBreak(List<Element> elements, double minY, double y, {double pad = 3}) {
+  final spans = <(double, double)>[];
+  for (final e in elements) {
+    final b = e.bounds();
+    if (b.bottom + pad > minY && b.top - pad < y) spans.add((b.top - pad, b.bottom + pad));
+  }
+  int cuts(double at) => spans.where((s) => s.$1 < at && at < s.$2).length;
+  var best = y, bestCuts = cuts(y);
+  if (bestCuts == 0) return y;
+  for (final s in spans) {
+    final at = s.$1;
+    if (at < minY || at > y) continue;
+    final n = cuts(at);
+    if (n < bestCuts || (n == bestCuts && at > best)) {
+      best = at;
+      bestCuts = n;
+    }
+  }
+  return best;
+}
+
+/// Splits [top]..[bottom] into sheets [sheetH] tall that end in gaps of the writing.
+/// Each sheet gives up at most 40% of its height to avoid a cut.
+List<(double, double)> _sheetRows(List<Element> elements, double top, double bottom, double sheetH) {
+  final rows = <(double, double)>[];
+  var y = top;
+  do {
+    final full = y + sheetH;
+    final end = full >= bottom ? full : sheetBreak(elements, y + sheetH * 0.6, full);
+    rows.add((y, end));
+    y = end;
+  } while (y < bottom - sheetH * 0.02);
+  return rows;
 }
 
 RectD contentArea(NotePage p, {double pad = 36}) {
@@ -48,9 +91,8 @@ List<ExportSheet> planSheets(Note n, {List<int>? pages, CanvasExport canvas = Ca
         out.add(ExportSheet(p, RectD(0, 0, p.width, p.height)));
       case NoteLayout.endless:
         final sheetH = n.pageHeight;
-        final count = math.max(1, (p.height / sheetH - 0.02).ceil());
-        for (var k = 0; k < count; k++) {
-          out.add(ExportSheet(p, RectD(0, k * sheetH, p.width, (k + 1) * sheetH)));
+        for (final (top, bottom) in _sheetRows(p.elements, 0, p.height, sheetH)) {
+          out.add(ExportSheet(p, RectD(0, top, p.width, bottom), sheetHeight: sheetH));
         }
       case NoteLayout.canvas:
         final a = contentArea(p);
@@ -58,10 +100,10 @@ List<ExportSheet> planSheets(Note n, {List<int>? pages, CanvasExport canvas = Ca
           out.add(ExportSheet(p, a));
         } else {
           final w = n.paper.w, h = n.paper.h;
-          final cols = math.max(1, (a.width / w).ceil()), rows = math.max(1, (a.height / h).ceil());
-          for (var r = 0; r < rows; r++) {
+          final cols = math.max(1, (a.width / w).ceil());
+          for (final (top, bottom) in _sheetRows(p.elements, a.top, a.bottom, h)) {
             for (var c = 0; c < cols; c++) {
-              out.add(ExportSheet(p, RectD(a.left + c * w, a.top + r * h, a.left + (c + 1) * w, a.top + (r + 1) * h)));
+              out.add(ExportSheet(p, RectD(a.left + c * w, top, a.left + (c + 1) * w, bottom), sheetHeight: h));
             }
           }
         }
@@ -148,7 +190,7 @@ Future<Uint8List> _build(Note note, List<ExportSheet> sheets, ExportFonts fonts,
         if (e is TextEl && e.rect.overlaps(a)) e,
     ];
     doc.addPage(pw.Page(
-      pageFormat: PdfPageFormat(a.width, a.height, marginAll: 0),
+      pageFormat: PdfPageFormat(s.width, s.height, marginAll: 0),
       margin: pw.EdgeInsets.zero,
       build: (ctx) => pw.Stack(children: [
         pw.CustomPaint(
@@ -177,13 +219,19 @@ Future<Uint8List> _build(Note note, List<ExportSheet> sheets, ExportFonts fonts,
 
 void _paintSheet(PdfGraphics g, Note note, ExportSheet s, PdfImage? Function(String) imageFor, PdfImage? bg, bool transparentPdf) {
   final a = s.area;
+  final p = s.page;
   // page coordinates (y down) → PDF (y up)
-  g.setTransform(Matrix4(1, 0, 0, 0, 0, -1, 0, 0, 0, 0, 1, 0, 0, a.height, 0, 1));
+  g.setTransform(Matrix4(1, 0, 0, 0, 0, -1, 0, 0, 0, 0, 1, 0, 0, s.height, 0, 1));
   g.setTransform(Matrix4.translationValues(-a.left, -a.top, 0));
+  if (s.height > a.height) {
+    // Empty paper below the area: its writing continues on the next sheet.
+    g.setFillColor(p.pdf != null ? PdfColors.white : PdfColor.fromInt((p.templateOverride ?? note.template).paperColor));
+    g.drawRect(a.left, a.top, a.width, s.height);
+    g.fillPath();
+  }
   g.drawRect(a.left, a.top, a.width, a.height);
   g.clipPath();
 
-  final p = s.page;
   if (p.pdf != null) {
     if (!transparentPdf) {
       g.setFillColor(PdfColors.white);

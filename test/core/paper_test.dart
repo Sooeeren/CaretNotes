@@ -18,6 +18,19 @@ void main() {
       expect(g.lines.where((l) => l.a.x == l.b.x && l.color == marginLineColor), hasLength(1));
     });
 
+    test('lined paper without a margin: the same lines, no red line, text starts at the left', () {
+      const plain = Template(kind: TemplateKind.linedPlain, spacing: 22);
+      final g = paperGeometry(plain, a4, page: a4);
+      final withMargin = paperGeometry(const Template(kind: TemplateKind.lined, spacing: 22), a4, page: a4);
+      expect(g.lines.every((l) => l.a.y == l.b.y && l.color != marginLineColor), isTrue);
+      expect(g.lines.map((l) => l.a.y), withMargin.lines.where((l) => l.a.y == l.b.y).map((l) => l.a.y));
+      expect(paperPresets.where((p) => p.kind == TemplateKind.linedPlain), isNotEmpty);
+      final f = ruledFrameAt(plain, const Vec2(300, 100), pageWidth: a4.width, pageHeight: a4.height);
+      expect(f.left, lessThan(notebookMargin(22)));
+      expect(f.top, 88);
+      expect(Template.fromJson(plain.toJson()).kind, TemplateKind.linedPlain);
+    });
+
     test('Cornell paper has a cue column and a summary line', () {
       final g = paperGeometry(const Template(kind: TemplateKind.cornell, spacing: 22), a4, page: a4);
       final cue = cornellCueX(a4.width);

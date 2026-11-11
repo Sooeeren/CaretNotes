@@ -7,6 +7,11 @@ import 'package:http/http.dart' as http;
 const releasesRepo = 'Sooeeren/CaretNotes';
 const releasesPage = 'https://github.com/$releasesRepo/releases';
 
+/// Every release also carries this file (the API's release JSON, written by the release
+/// workflow). Downloads aren't rate-limited like the API (60 requests an hour per network),
+/// so it's the fallback when the API answers 403/429.
+const releaseManifest = '$releasesPage/latest/download/release.json';
+
 class AppVersion implements Comparable<AppVersion> {
   final List<int> parts;
   const AppVersion(this.parts);
@@ -137,19 +142,26 @@ class UpdateChecker {
   final AppVersion current;
   UpdateChecker({required this.client, required this.current});
 
-  Future<ReleaseInfo?> check() async {
-    final http.Response r;
+  Future<http.Response> _get(String url) async {
     try {
-      r = await client
-          .get(Uri.parse('https://api.github.com/repos/$releasesRepo/releases/latest'), headers: {
-            'Accept': 'application/vnd.github+json',
-            'User-Agent': 'CaretNotes/$current',
-          })
+      return await client
+          .get(Uri.parse(url), headers: {'Accept': 'application/vnd.github+json', 'User-Agent': 'CaretNotes/$current'})
           .timeout(const Duration(seconds: 15));
     } catch (e) {
       throw UpdateException('Could not reach GitHub ($e)');
     }
+  }
+
+  Future<ReleaseInfo?> check() async {
+    var r = await _get('https://api.github.com/repos/$releasesRepo/releases/latest');
     if (r.statusCode == 404) return null; // no release published yet
+    if (r.statusCode == 403 || r.statusCode == 429) {
+      // Rate limited (many people on one network, e.g. a university): ask the download instead.
+      r = await _get(releaseManifest);
+      if (r.statusCode != 200) {
+        throw UpdateException('GitHub is limiting update checks from this network right now. Try again in an hour.');
+      }
+    }
     if (r.statusCode != 200) throw UpdateException('GitHub answered ${r.statusCode}');
     final ReleaseInfo info;
     try {

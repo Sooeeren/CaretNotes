@@ -30,6 +30,37 @@ void main() {
     expect(pageCount(await exportNotePdf(note)), 3);
   });
 
+  test('a sheet ends in a gap of the writing, not through it', () {
+    StrokeEl line(String id, double y0, double y1) =>
+        StrokeEl(id: id, points: [InkPoint(50, y0, .5), InkPoint(300, y1, .5)], tool: ToolKind.pen, color: 0xFF000000, width: 2);
+    // nothing in the way: the sheet ends where it would anyway
+    expect(sheetBreak([line('a', 100, 120)], 500, 800), 800);
+    // a word written across the cut: the sheet ends just above it
+    final cut = sheetBreak([line('a', 100, 120), line('b', 780, 820)], 500, 800);
+    expect(cut, lessThan(780));
+    expect(cut, greaterThan(760));
+    // writing everywhere near the cut: the fewest strokes are cut
+    final busy = [line('a', 700, 900), line('b', 760, 790), line('c', 795, 805)];
+    expect(sheetBreak(busy, 500, 800), lessThanOrEqualTo(700));
+  });
+
+  test('an endless note splits into A4 sheets without cutting handwriting in half', () async {
+    final n = Note.create(title: 'x', layout: NoteLayout.endless, deviceName: 'd');
+    final sheetH = n.pageHeight;
+    // a line of handwriting right across the first A4 page boundary
+    final across = StrokeEl(id: 'x', points: [InkPoint(60, sheetH - 15, .5), InkPoint(400, sheetH + 15, .5)], tool: ToolKind.pen, color: 0xFF000000, width: 2);
+    final note = n.copyWith(pages: [n.pages.first.copyWith(height: 2000, elements: [s, across])]);
+    final sheets = planSheets(note);
+    final b = across.bounds();
+    for (final sh in sheets) {
+      expect(sh.height, closeTo(sheetH, 1e-6), reason: 'every sheet is A4');
+      expect(sh.area.top < b.top && b.top < sh.area.bottom && sh.area.bottom < b.bottom, isFalse, reason: 'no sheet ends inside the stroke');
+    }
+    expect(sheets.first.area.bottom, lessThan(b.top));
+    expect(sheets[1].area.top, sheets.first.area.bottom);
+    expect(pageCount(await exportNotePdf(note)), sheets.length);
+  });
+
   test('only selected pages are exported', () async {
     final n = Note.create(title: 'x', layout: NoteLayout.paged, deviceName: 'd');
     final p = n.pages.first;

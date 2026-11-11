@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:pasteboard/pasteboard.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/color_math.dart';
 import '../../core/geometry.dart';
 import '../../core/library/library_store.dart';
 import '../../core/model/note.dart';
@@ -345,6 +346,7 @@ class _EditorScreenState extends State<EditorScreen> {
           settingsCtl.update((s) => s.copyWith(penColors: [col, ...s.penColors].take(7).toList()));
         }
       },
+      onReplaceColor: (old, now) => settingsCtl.update((s) => s.copyWith(penColors: replaceColor(s.penColors, old, now))),
     );
 
     if (c.rulerVisible && _ruler.value == null) WidgetsBinding.instance.addPostFrameCallback((_) => _toggleRuler());

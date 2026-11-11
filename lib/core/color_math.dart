@@ -58,3 +58,15 @@ List<List<int>> colorPages(List<int> mine, List<int> palette, {required int perP
   if (all.isEmpty) return [<int>[]];
   return [for (var i = 0; i < all.length; i += perPage) all.sublist(i, (i + perPage).clamp(0, all.length))];
 }
+
+/// [colors] with [old] changed to [now] in the same place (the quick colors keep their
+/// order). [now] isn't listed twice; when [old] isn't there, [now] goes first.
+List<int> replaceColor(List<int> colors, int old, int now) {
+  if (old == now) return colors;
+  final i = colors.indexOf(old);
+  if (i < 0) return [now, ...colors.where((c) => c != now)];
+  return [
+    for (var k = 0; k < colors.length; k++)
+      if (k == i) now else if (colors[k] != now) colors[k],
+  ];
+}

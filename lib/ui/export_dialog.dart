@@ -86,7 +86,120 @@ class _ExportDialogState extends State<_ExportDialog> {
   double _dpi = 200;
   bool _busy = false;
 
+  // Preview: one small picture per sheet, rendered one after another.
+  static const _previewHeight = 150.0;
+  static const _previewMax = 24;
+  final _previewPdf = <String, ui.Image>{};
+  late final PdfPageCache _previewCache = PdfPageCache(() => n.assets);
+  List<ExportSheet> _previewSheets = const [];
+  final _previewImages = <ui.Image?>[];
+  String? _previewFor;
+  int _previewGen = 0;
+
+  /// The running preview job; exporting waits for it (PDFium must not render and stamp at once).
+  Future<void> _previewJob = Future.value();
+
   Note get n => widget.note;
+
+  @override
+  void dispose() {
+    _previewGen++;
+    _range.dispose();
+    final job = _previewJob;
+    // Free the pictures once the last one is done rendering.
+    job.whenComplete(() {
+      _disposePreview();
+      for (final im in _previewPdf.values) {
+        im.dispose();
+      }
+      _previewCache.dispose();
+    });
+    super.dispose();
+  }
+
+  void _disposePreview() {
+    for (final im in _previewImages) {
+      im?.dispose();
+    }
+    _previewImages.clear();
+  }
+
+  /// Starts rendering the preview when the sheets changed.
+  void _updatePreview(List<ExportSheet> sheets) {
+    final key = [for (final s in sheets) '${s.page.id}:${s.area.left},${s.area.top},${s.area.right},${s.area.bottom},${s.height}'].join('|');
+    if (key == _previewFor) return;
+    _previewFor = key;
+    final gen = ++_previewGen;
+    _previewJob = _previewJob.then((_) async {
+      if (gen != _previewGen) return;
+      final shown = sheets.take(_previewMax).toList();
+      _disposePreview();
+      if (mounted) setState(() => _previewSheets = shown);
+      final images = await decodeImages(n);
+      for (final s in shown) {
+        if (gen != _previewGen) break;
+        ui.Image? im;
+        try {
+          final ref = s.page.pdf;
+          ui.Image? bg;
+          if (ref != null) {
+            final k = '${ref.assetId}#${ref.pageIndex}';
+            bg = _previewPdf[k] ??= (await _previewCache.renderNow(ref, 400))!;
+          }
+          final scale = 2 * _previewHeight / s.height;
+          im = await renderPageImage(n, s.page, RenderAssets(images: images, pdfImage: (_) => bg), scale,
+              area: Rect.fromLTRB(s.area.left, s.area.top, s.area.right, s.area.bottom));
+        } catch (_) {}
+        if (gen != _previewGen || !mounted) {
+          im?.dispose();
+          break;
+        }
+        setState(() => _previewImages.add(im));
+      }
+      for (final im in images.values) {
+        im.dispose();
+      }
+    }).catchError((_) {});
+  }
+
+  Widget _preview(ThemeData t, List<ExportSheet> sheets) {
+    final more = sheets.length - _previewSheets.length;
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text('Preview · ${sheets.length} ${_format == ExportFormat.pdf ? 'page' : 'image'}${sheets.length == 1 ? '' : 's'}',
+          style: t.textTheme.labelLarge),
+      const SizedBox(height: 8),
+      SizedBox(
+        height: _previewHeight + 22,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          itemCount: _previewSheets.length + (more > 0 ? 1 : 0),
+          separatorBuilder: (_, _) => const SizedBox(width: 10),
+          itemBuilder: (context, i) {
+            if (i == _previewSheets.length) {
+              return Center(child: Text('+$more more', style: t.textTheme.bodySmall));
+            }
+            final s = _previewSheets[i];
+            final w = _previewHeight * s.width / s.height;
+            final im = i < _previewImages.length ? _previewImages[i] : null;
+            return Column(children: [
+              Container(
+                key: ValueKey('export-preview-$i'),
+                width: w,
+                height: _previewHeight,
+                alignment: Alignment.topCenter,
+                decoration: BoxDecoration(color: Colors.white, border: Border.all(color: t.dividerColor)),
+                child: im == null
+                    ? (i < _previewImages.length ? null : const Center(child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))))
+                    : RawImage(image: im, width: w - 2, height: (_previewHeight - 2) * s.area.height / s.height, fit: BoxFit.fill),
+              ),
+              const SizedBox(height: 4),
+              Text('${i + 1}', style: t.textTheme.labelSmall),
+            ]);
+          },
+        ),
+      ),
+    ]);
+  }
 
   List<int>? _pages() {
     if (n.layout != NoteLayout.paged) return null;
@@ -111,6 +224,9 @@ class _ExportDialogState extends State<_ExportDialog> {
 
   Future<void> _run() async {
     setState(() => _busy = true);
+    _previewGen++; // stop the preview, then wait for its last picture
+    await _previewJob;
+    _previewFor = null; // redo it afterwards if the dialog stays open
     final cache = PdfPageCache(() => n.assets);
     try {
       final pages = _pages();
@@ -173,6 +289,8 @@ class _ExportDialogState extends State<_ExportDialog> {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context);
+    final sheets = planSheets(n, pages: _pages(), canvas: _canvas);
+    if (!_busy) _updatePreview(sheets);
     return AlertDialog(
       title: Text('Export "${n.title}"'),
       content: SizedBox(
@@ -209,7 +327,8 @@ class _ExportDialogState extends State<_ExportDialog> {
               ]),
             ),
           ],
-          if (n.layout == NoteLayout.endless) Text('The long page is split into A4 sheets.', style: t.textTheme.bodySmall),
+          if (n.layout == NoteLayout.endless)
+            Text('The long page is split into A4 sheets, between lines of writing so nothing is cut in half.', style: t.textTheme.bodySmall),
           if (n.layout == NoteLayout.canvas) ...[
             Text('Canvas', style: t.textTheme.labelLarge),
             RadioGroup<CanvasExport>(
@@ -228,6 +347,8 @@ class _ExportDialogState extends State<_ExportDialog> {
           ],
           if (_format == ExportFormat.pdf)
             Text('Ink stays sharp at any zoom, typed text stays selectable, imported PDFs keep their original quality.', style: t.textTheme.bodySmall),
+          const SizedBox(height: 16),
+          _preview(t, sheets),
         ]),
       ),
       actions: [

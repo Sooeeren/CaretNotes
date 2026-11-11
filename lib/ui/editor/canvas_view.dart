@@ -100,7 +100,9 @@ class _CanvasViewState extends State<CanvasView> {
   Offset _pinchOffset = Offset.zero;
   bool _rulerGesture = false;
   RulerGeom? _rulerStart;
-  Offset? _hover;
+  /// Where the eraser circle is drawn; its own notifier so the circle follows the pen
+  /// (hovering or erasing) without rebuilding the canvas.
+  final _cursor = _EraserCursor();
 
   Timer? _holdTimer;
   Offset _holdAnchor = Offset.zero;
@@ -124,6 +126,7 @@ class _CanvasViewState extends State<CanvasView> {
   @override
   void dispose() {
     _holdTimer?.cancel();
+    _cursor.dispose();
     c.removeListener(_onChange);
     widget.pdf.removeListener(_onChange);
     widget.ruler.removeListener(_onChange);
@@ -348,6 +351,7 @@ class _CanvasViewState extends State<CanvasView> {
       case _Action.erase:
         c.beginErase();
         c.eraseAt(pg.id, local);
+        _cursor.set(e.localPosition, erasing: true);
       case _Action.select:
         c.clearSelection(notify: false);
         c.live
@@ -414,7 +418,7 @@ class _CanvasViewState extends State<CanvasView> {
         if ((e.localPosition - _holdAnchor).distance > 4) _restartHold(e.localPosition, ptr);
       case _Action.erase:
         c.eraseAt(ptr.pageId, local);
-        _hover = e.localPosition;
+        _cursor.set(e.localPosition, erasing: true);
       case _Action.select:
         if (c.live.selectPath != null) {
           c.live.selectPath!.add(local);
@@ -463,6 +467,7 @@ class _CanvasViewState extends State<CanvasView> {
         }
       case _Action.erase:
         c.endErase();
+        _cursor.set(c.tool == EditorTool.eraser ? e.localPosition : null);
       case _Action.select:
         final path = c.live.selectPath, box = c.live.selectBox;
         c.live.clear();
@@ -713,7 +718,7 @@ class _CanvasViewState extends State<CanvasView> {
       children.add(Positioned.fill(
         child: IgnorePointer(
           child: RepaintBoundary(
-            child: CustomPaint(painter: _LivePainter(c.live, _scale, _offset, _pageOrigin, c, _hover, dark)),
+            child: CustomPaint(painter: _LivePainter(c.live, _scale, _offset, _pageOrigin, c, _cursor, dark)),
           ),
         ),
       ));
@@ -734,11 +739,8 @@ class _CanvasViewState extends State<CanvasView> {
           onPointerHover: (e) {
             _router.hover(e.kind, e.timeStamp.inMilliseconds);
             _dropCancelledTouches();
-            if (c.tool == EditorTool.eraser || e.kind == PointerDeviceKind.invertedStylus) {
-              setState(() => _hover = e.localPosition);
-            } else if (_hover != null) {
-              setState(() => _hover = null);
-            }
+            final eraser = c.tool == EditorTool.eraser || e.kind == PointerDeviceKind.invertedStylus;
+            _cursor.set(eraser ? e.localPosition : null, erasing: e.kind == PointerDeviceKind.invertedStylus);
           },
           onPointerSignal: _onSignal,
           onPointerPanZoomUpdate: (e) {
@@ -753,7 +755,7 @@ class _CanvasViewState extends State<CanvasView> {
               EditorTool.select => SystemMouseCursors.precise,
               _ => SystemMouseCursors.precise,
             },
-            onExit: (_) => setState(() => _hover = null),
+            onExit: (_) => _cursor.set(null),
           ),
         ),
       ));
@@ -928,9 +930,10 @@ class _LivePainter extends CustomPainter {
   final Offset offset;
   final Offset Function(String) origin;
   final EditorController c;
-  final Offset? hover;
+  final _EraserCursor cursor;
   final bool dark;
-  _LivePainter(this.live, this.scale, this.offset, this.origin, this.c, this.hover, this.dark) : super(repaint: live);
+  _LivePainter(this.live, this.scale, this.offset, this.origin, this.c, this.cursor, this.dark)
+      : super(repaint: Listenable.merge([live, cursor]));
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -985,9 +988,10 @@ class _LivePainter extends CustomPainter {
       canvas.drawCircle(rot, 8, fill);
       canvas.drawCircle(rot, 8, line);
     }
-    if (hover != null && (c.tool == EditorTool.eraser)) {
+    final at = cursor.pos;
+    if (at != null && (c.tool == EditorTool.eraser || cursor.erasing)) {
       canvas.drawCircle(
-          hover!,
+          at,
           c.eraserSize * scale,
           Paint()
             ..style = PaintingStyle.stroke
@@ -998,4 +1002,18 @@ class _LivePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_LivePainter old) => true;
+}
+
+/// The eraser circle's position. [erasing] shows it for the pen's eraser end or side
+/// button even while another tool is picked.
+class _EraserCursor extends ChangeNotifier {
+  Offset? pos;
+  bool erasing = false;
+
+  void set(Offset? p, {bool erasing = false}) {
+    if (p == pos && erasing == this.erasing) return;
+    pos = p;
+    this.erasing = erasing;
+    notifyListeners();
+  }
 }
