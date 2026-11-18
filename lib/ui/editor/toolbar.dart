@@ -19,7 +19,7 @@ ToolbarDock dockFor(Offset pos, Size area, {double edge = 90}) {
 }
 
 /// The bar across the top: the note itself (back, title) and what you do with it
-/// (undo, find, read mode, insert, pages, more). Drawing tools live in [ToolPill].
+/// (find, read mode, insert, pages, more). Drawing tools, undo and redo live in [ToolPill].
 class NoteBar extends StatelessWidget {
   final EditorController c;
   final VoidCallback onBack;
@@ -84,18 +84,7 @@ class NoteBar extends StatelessWidget {
                   ),
                 ),
               ),
-              IconButton(
-                tooltip: 'Undo (Ctrl+Z)',
-                icon: const Icon(Icons.undo),
-                onPressed: c.canUndo && !c.readOnly ? c.undo : null,
-              ),
-              IconButton(
-                tooltip: 'Redo (Ctrl+Y)',
-                icon: const Icon(Icons.redo),
-                onPressed: c.canRedo && !c.readOnly ? c.redo : null,
-              ),
               if (!compact) ...[
-                const SizedBox(height: 22, child: VerticalDivider(width: 17)),
                 BarToggle(icon: Icons.search, tooltip: 'Find in note (Ctrl+F)', on: finding, onTap: onFind),
                 BarToggle(
                   icon: Icons.visibility_outlined,
@@ -322,6 +311,20 @@ class ToolPill extends StatelessWidget {
           if (col != null) _useColor(col);
         },
       ),
+      divider(),
+      // Here rather than in the note bar, so they stay at hand in full screen.
+      ToolButton(
+        icon: Icons.undo,
+        tooltip: 'Undo (Ctrl+Z)',
+        selected: false,
+        onTap: c.canUndo && !c.readOnly ? c.undo : null,
+      ),
+      ToolButton(
+        icon: Icons.redo,
+        tooltip: 'Redo (Ctrl+Y)',
+        selected: false,
+        onTap: c.canRedo && !c.readOnly ? c.redo : null,
+      ),
     ];
 
     final pill = Material(
@@ -357,7 +360,9 @@ class ToolButton extends StatelessWidget {
   final String tooltip;
   final bool selected;
   final Color? accent;
-  final VoidCallback onTap;
+
+  /// Null greys the button out.
+  final VoidCallback? onTap;
   const ToolButton({
     super.key,
     this.icon,
@@ -371,7 +376,11 @@ class ToolButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context);
-    final fg = selected ? t.colorScheme.primary : t.colorScheme.onSurfaceVariant;
+    final fg = onTap == null
+        ? t.colorScheme.onSurface.withValues(alpha: 0.32)
+        : selected
+            ? t.colorScheme.primary
+            : t.colorScheme.onSurfaceVariant;
     return Tooltip(
       message: tooltip,
       child: Padding(

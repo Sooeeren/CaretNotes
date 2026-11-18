@@ -58,7 +58,7 @@ void main() {
     expect(closed, isTrue);
   });
 
-  testWidgets('note bar read-mode button toggles read mode and disables undo', (tester) async {
+  testWidgets('note bar read-mode button toggles read mode', (tester) async {
     final c = make();
     addText(c, 'x', 100);
     await tester.pumpWidget(wrap(ListenableBuilder(
@@ -75,14 +75,11 @@ void main() {
         moreMenu: const SizedBox(),
       ),
     )));
-    IconButton undo() => tester.widget<IconButton>(find.ancestor(of: find.byIcon(Icons.undo), matching: find.byType(IconButton)));
-    expect(undo().onPressed, isNotNull);
-
     await tester.tap(find.byTooltip('Read mode (only scroll, no accidental marks)'));
     await tester.pump();
     expect(c.readOnly, isTrue);
     expect(find.text('1 page · Read mode'), findsOneWidget);
-    expect(undo().onPressed, isNull);
+    expect(find.byIcon(Icons.undo), findsNothing, reason: 'undo/redo moved to the tool pill');
   });
 
   testWidgets('full-screen button, and a small window moves find and read mode into the menu', (tester) async {
@@ -108,6 +105,5 @@ void main() {
     await tester.pumpWidget(bar(true));
     expect(find.byTooltip('Find in note (Ctrl+F)'), findsNothing);
     expect(find.byTooltip('Full screen (F11)'), findsNothing);
-    expect(find.byIcon(Icons.undo), findsOneWidget);
   });
 }

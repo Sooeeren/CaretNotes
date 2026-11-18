@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "dev.caretnotes" "\0"
-            VALUE "FileDescription", "caret_notes" "\0"
+            VALUE "CompanyName", "CaretNotes" "\0"
+            VALUE "FileDescription", "CaretNotes" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "caret_notes" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 dev.caretnotes. All rights reserved." "\0"
+            VALUE "InternalName", "CaretNotes" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 CaretNotes contributors. MIT License." "\0"
             VALUE "OriginalFilename", "caret_notes.exe" "\0"
-            VALUE "ProductName", "caret_notes" "\0"
+            VALUE "ProductName", "CaretNotes" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

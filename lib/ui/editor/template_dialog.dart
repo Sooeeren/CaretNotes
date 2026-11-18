@@ -103,7 +103,24 @@ class _TemplateDialogState extends State<_TemplateDialog> {
                   ),
                 ),
             ]),
-            if (usesSpacing) ...[
+            if (_t.kind == TemplateKind.grid) ...[
+              const SizedBox(height: 12),
+              Builder(builder: (_) {
+                final w = widget.pageSize.width;
+                final cols = gridColumns(w, _t.spacing).clamp(gridColumnsMin, gridColumnsMax);
+                return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('$cols columns · ${(_t.spacing / 2.83465).toStringAsFixed(1)} mm squares', style: t.textTheme.labelLarge),
+                  Slider(
+                    value: cols.toDouble(),
+                    min: gridColumnsMin.toDouble(),
+                    max: gridColumnsMax.toDouble(),
+                    divisions: gridColumnsMax - gridColumnsMin,
+                    label: '$cols columns',
+                    onChanged: (v) => setState(() => _t = _t.copyWith(spacing: gridSpacingForColumns(w, v.round()))),
+                  ),
+                ]);
+              }),
+            ] else if (usesSpacing) ...[
               const SizedBox(height: 12),
               Text('Spacing ${(_t.spacing / 2.83465).toStringAsFixed(1)} mm', style: t.textTheme.labelLarge),
               Slider(value: _t.spacing.clamp(10.0, 48.0), min: 10, max: 48, onChanged: (v) => setState(() => _t = _t.copyWith(spacing: v))),

@@ -56,6 +56,30 @@ void main() {
     expect(make().selectMode, SelectMode.box);
   });
 
+  testWidgets('undo and redo sit in the pill (visible in full screen) and follow the history', (tester) async {
+    final c = make();
+    await tester.pumpWidget(host(c, const AppSettings()));
+    ToolButton btn(String tip) => tester.widget<ToolButton>(find.byWidgetPredicate((w) => w is ToolButton && w.tooltip == tip));
+    expect(btn('Undo (Ctrl+Z)').onTap, isNull);
+    expect(btn('Redo (Ctrl+Y)').onTap, isNull);
+
+    final pid = c.note.pages.first.id;
+    final t = c.addText(pid, const Vec2(80, 100), mode: TextMode.box);
+    c.typeText(pid, t.id, 'hi', 30);
+    c.finishTextEdit();
+    await tester.pump();
+    expect(btn('Undo (Ctrl+Z)').onTap, isNotNull);
+
+    await tester.tap(find.byTooltip('Undo (Ctrl+Z)'));
+    await tester.pump();
+    expect(c.canRedo, isTrue);
+    expect(btn('Redo (Ctrl+Y)').onTap, isNotNull);
+
+    c.toggleReadOnly();
+    await tester.pump();
+    expect(btn('Redo (Ctrl+Y)').onTap, isNull, reason: 'read mode makes no changes');
+  });
+
   testWidgets('the pill shows the chosen number of quick colors and they set the pen color', (tester) async {
     final c = make();
     const s = AppSettings(penColors: [0xFF111111, 0xFF3B6FE0, 0xFFD23B3B, 0xFF1A8F3C]);

@@ -116,7 +116,11 @@ void main() {
     test('stylus eraser end and side button are recognized', () {
       final r = InputRouter(fingerDrawing: false);
       expect(r.down(1, PointerDeviceKind.invertedStylus, kPrimaryButton, 0), InputRole.erase);
-      expect(r.down(2, PointerDeviceKind.stylus, kPrimaryButton | kSecondaryStylusButton, 0), InputRole.sideButton);
+      // The S Pen / barrel button arrives as the primary stylus button (Windows PEN_FLAG_BARREL,
+      // Android BUTTON_STYLUS_PRIMARY); an eraser button (PEN_FLAG_ERASER) as the secondary one.
+      expect(r.down(2, PointerDeviceKind.stylus, kPrimaryButton | kPrimaryStylusButton, 0), InputRole.sideButton);
+      expect(r.down(4, PointerDeviceKind.stylus, kPrimaryButton | kSecondaryStylusButton, 0), InputRole.erase);
+      expect(r.down(5, PointerDeviceKind.stylus, kPrimaryButton, 0), InputRole.draw);
       expect(r.down(3, PointerDeviceKind.mouse, kMiddleMouseButton, 0), InputRole.navigate);
     });
   });

@@ -9,6 +9,18 @@ import 'package:flutter_test/flutter_test.dart';
 const a4 = RectD(0, 0, 595.28, 841.89);
 
 void main() {
+  test('grid columns: spacing fits a whole number of squares across the page', () {
+    const a4 = 595.28;
+    expect(gridColumns(a4, 5 * 2.83465), 42, reason: 'Grid 5 mm');
+    expect(gridColumns(a4, 10 * 2.83465), 21, reason: 'Grid 1 cm');
+    final s = gridSpacingForColumns(a4, 30);
+    expect(s * 30, closeTo(a4, 1e-9));
+    expect(gridColumns(a4, s), 30);
+    final g = paperGeometry(Template(kind: TemplateKind.grid, spacing: s), const RectD(0, 0, a4, 100));
+    final verticals = g.lines.where((l) => l.a.x == l.b.x).length;
+    expect(verticals, 31, reason: '30 squares = 31 lines, the last on the right edge');
+  });
+
   group('paper geometry', () {
     test('lined paper: lines every spacing below the header, plus the margin line', () {
       final g = paperGeometry(const Template(kind: TemplateKind.lined, spacing: 22), a4, page: a4);

@@ -5,8 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../core/code_stats.g.dart';
 import '../core/library/library_store.dart';
 import '../core/settings.dart';
+import 'code_stats_view.dart';
 import 'controllers.dart';
 import 'folder_style.dart';
 import 'sync/sync_controller.dart';
@@ -189,6 +191,7 @@ class SettingsScreen extends StatelessWidget {
                 );
               }),
             ]),
+            section('Made with AI', [const CodeStatsView(stats: codeStats)]),
             Center(child: Text('CaretNotes ${UpdateController.current} · open source (MIT)', style: t.textTheme.bodySmall)),
           ]),
         ),

@@ -49,8 +49,9 @@ class InputRouter {
       _stylusDown.add(pointer);
       _lastStylusMs = timeMs;
       _cancelTouches();
-      if (kind == PointerDeviceKind.invertedStylus) return InputRole.erase;
-      if (buttons & kSecondaryStylusButton != 0) return InputRole.sideButton;
+      // Barrel (S Pen) button = primary stylus button; a pen's eraser button = secondary.
+      if (kind == PointerDeviceKind.invertedStylus || buttons & kSecondaryStylusButton != 0) return InputRole.erase;
+      if (buttons & kPrimaryStylusButton != 0) return InputRole.sideButton;
       return InputRole.draw;
     }
     if (kind == PointerDeviceKind.touch) {

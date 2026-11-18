@@ -398,8 +398,31 @@ class _CanvasViewState extends State<CanvasView> {
       _updateNav();
       return;
     }
-    final ptr = _ptrs[e.pointer];
+    var ptr = _ptrs[e.pointer];
     if (ptr == null) return;
+    // S Pen button pressed just after the pen touched down: switch to the button's action
+    // before the stroke really starts.
+    if (ptr.action == _Action.stroke &&
+        !ptr.moved &&
+        !c.readOnly &&
+        InputRouter.isStylus(e.kind) &&
+        e.buttons & (kPrimaryStylusButton | kSecondaryStylusButton) != 0) {
+      c.cancelStroke();
+      _ptrs.remove(e.pointer);
+      _onDown(PointerDownEvent(
+        timeStamp: e.timeStamp,
+        pointer: e.pointer,
+        kind: e.kind,
+        device: e.device,
+        position: e.localPosition,
+        buttons: e.buttons,
+        pressure: e.pressure,
+        pressureMin: e.pressureMin,
+        pressureMax: e.pressureMax,
+      ));
+      ptr = _ptrs[e.pointer];
+      if (ptr == null) return;
+    }
     if ((e.localPosition - ptr.downScreen).distance > 3) ptr.moved = true;
     final o = _pageOrigin(ptr.pageId);
     final d = _toDoc(e.localPosition);

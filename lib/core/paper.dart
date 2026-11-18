@@ -39,6 +39,11 @@ double? cornellSummaryY(double pageWidth, double pageHeight, double spacing) {
   return (pageHeight * 0.8 / spacing).round() * spacing;
 }
 
+/// Grid paper is set by how many squares fit across the page.
+const gridColumnsMin = 8, gridColumnsMax = 60;
+int gridColumns(double pageWidth, double spacing) => (pageWidth / spacing).round();
+double gridSpacingForColumns(double pageWidth, int columns) => pageWidth / columns;
+
 /// Music staff: distance between the five lines of one staff, and from one staff to the next.
 double staffGap(double spacing) => spacing * 0.32;
 double staffPitch(double spacing) => spacing * 3.4;
@@ -84,11 +89,14 @@ PaperGeometry paperGeometry(Template t, RectD area, {RectD? page}) {
       h(headerY, w: 0.9, color: marginLineColor);
       if (summary != null) h(summary, w: 1.1, color: marginLineColor);
     case TemplateKind.grid:
-      for (var y = y0; y <= area.bottom; y += s) {
-        h(y);
+      // Multiplied rather than summed, and with a little slack, so a grid that fits the
+      // page exactly (set by column count) keeps its last line on the right edge.
+      const eps = 1e-6;
+      for (var i = (area.top / s).floor(); i * s <= area.bottom + eps; i++) {
+        h(math.min(i * s, area.bottom));
       }
-      for (var x = x0; x <= area.right; x += s) {
-        v(x);
+      for (var i = (area.left / s).floor(); i * s <= area.right + eps; i++) {
+        v(math.min(i * s, area.right));
       }
     case TemplateKind.dots:
       for (var y = y0; y <= area.bottom; y += s) {
